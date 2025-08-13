@@ -1,0 +1,12 @@
+default: &default
+  summaries_dir: summaries
+  openai_api_key: <%= ENV['OPENAI_API_KEY'] %>
+  openai_model: gpt-4o-mini
+  max_tokens: 500
+  temperature: 0.3
+
+development:
+  <<: *default
+
+production:
+  <<: *default

@@ -1,0 +1,92 @@
+#!/usr/bin/env ruby
+
+require 'thor'
+require_relative '../lib/newsletter_summarizer'
+
+class NewsletterSummarizerCLI < Thor
+  desc "process", "Verarbeite alle Emails mit dem konfigurierten Subject-Filter"
+  option :unread_only, type: :boolean, default: false, desc: "Nur ungelesene Emails verarbeiten"
+  option :no_open, type: :boolean, default: false, desc: "HTML nicht automatisch im Browser öffnen"
+  
+  def process
+    summarizer = NewsletterSummarizer.new
+    
+    begin
+      summarizer.process_emails(unread_only: options[:unread_only])
+    ensure
+      summarizer.cleanup
+    end
+  end
+
+  desc "html", "Generiere HTML-Seite mit allen Zusammenfassungen und öffne sie im Browser (Option: --no_open)"
+  option :no_open, type: :boolean, default: false, desc: "HTML nicht automatisch im Browser öffnen"
+  def html
+    require_relative '../lib/html_generator'
+    
+    puts "📄 Generiere HTML-Seite mit Zusammenfassungen..."
+    
+    begin
+      html_generator = HtmlGenerator.new
+      html_file = html_generator.generate_html_page
+      html_generator.open_in_firefox(html_file) unless options[:no_open]
+      puts "✅ HTML-Seite in Firefox geöffnet"
+    rescue => e
+      puts "Fehler beim Generieren der HTML-Seite: #{e.message}"
+    end
+  end
+
+  desc "test", "Teste die IMAP-Verbindung"
+  def test
+    require_relative '../lib/imap_client'
+    
+    puts "Newsletter Summarizer - IMAP-Verbindungstest"
+    puts "============================================"
+    
+    begin
+      client = ImapClient.new
+      success = client.test_connection
+      
+      if success
+        puts "\n✅ IMAP-Verbindung erfolgreich!"
+        puts "Sie können jetzt Emails verarbeiten mit:"
+        puts "  bundle exec ruby bin/summarize process"
+      else
+        puts "\n❌ IMAP-Verbindung fehlgeschlagen!"
+        puts "Bitte prüfen Sie:"
+        puts "  1. Ihre Zugangsdaten in der .env Datei"
+        puts "  2. Die Server-Einstellungen in config/imap.yml"
+        puts "  3. Ob der Server IMAP-Zugriff erlaubt"
+      end
+    rescue => e
+      puts "Fehler beim Testen: #{e.message}"
+    end
+  end
+
+  desc "version", "Zeige die Version der Anwendung"
+  def version
+    puts "Newsletter Summarizer v1.0.0"
+  end
+
+  desc "reset", "Löscht alle Einträge verarbeiteter E-Mails (erneutes Scannen erlauben)"
+  method_option :force, type: :boolean, default: false, desc: "Ohne Rückfrage löschen"
+  def reset
+    unless options[:force]
+      print "Sind Sie sicher, dass Sie alle Einträge löschen möchten? [y/N]: "
+      answer = $stdin.gets.to_s.strip.downcase
+      unless %w[y yes j ja].include?(answer)
+        puts "Abgebrochen."
+        return
+      end
+    end
+
+    require_relative '../lib/database'
+    db = Database.new
+    before = db.processed_emails_count
+    db.clear_processed_emails
+    after = db.processed_emails_count
+    db.close
+    puts "Gelöscht: #{before - after} Einträge (jetzt #{after} in der DB)."
+  end
+end
+
+NewsletterSummarizerCLI.start(ARGV)

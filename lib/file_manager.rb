@@ -1,0 +1,99 @@
+require 'fileutils'
+require 'yaml'
+require 'erb'
+require 'date'
+require 'dotenv'
+
+class FileManager
+  def initialize
+    # Lade Umgebungsvariablen
+    Dotenv.load
+    @config = load_application_config
+    ensure_summaries_directory
+  end
+
+  def load_application_config
+    config_file = File.join(__dir__, '..', 'config', 'application.yml')
+    yaml_content = File.read(config_file)
+    erb_content = ERB.new(yaml_content).result(binding)
+    YAML.safe_load(erb_content, aliases: true)['development']
+  end
+
+  def ensure_summaries_directory
+    summaries_dir = @config['summaries_dir']
+    FileUtils.mkdir_p(summaries_dir) unless Dir.exist?(summaries_dir)
+  end
+
+  def save_summary(email, summary, title)
+    date = email.date || Time.now
+    date_str = date.strftime('%Y-%m-%d')
+    
+    # Erstelle einen sicheren Dateinamen
+    safe_title = sanitize_filename(title)
+    filename = "#{date_str}_#{safe_title}.md"
+    
+    # Stelle sicher, dass der Dateiname eindeutig ist
+    counter = 1
+    original_filename = filename
+    while File.exist?(File.join(@config['summaries_dir'], filename))
+      filename = "#{date_str}_#{safe_title}_#{counter}.md"
+      counter += 1
+    end
+    
+    filepath = File.join(@config['summaries_dir'], filename)
+    
+    content = generate_markdown_content(email, summary, title, date)
+    
+    File.write(filepath, content, encoding: 'UTF-8')
+    puts "Zusammenfassung gespeichert: #{filepath}"
+    
+    filename
+  end
+
+  private
+
+  def sanitize_filename(filename)
+    # Entferne oder ersetze ungültige Zeichen
+    filename.gsub(/[^\w\s-]/, '')
+           .gsub(/\s+/, '_')
+           .gsub(/_{2,}/, '_')
+           .downcase
+           .strip
+  end
+
+  def generate_markdown_content(email, summary, title, date)
+    date_str = date.strftime('%Y-%m-%d %H:%M')
+    links = extract_links(email)
+    
+    content = <<~MARKDOWN
+      # #{title}
+
+      **Datum:** #{date_str}  
+      **Von:** #{email.from.join(', ')}  
+      **Betreff:** #{email.subject}  
+      **Message-ID:** #{email.message_id}
+
+      ---
+
+      #{summary}
+
+      
+      Quellen:
+      #{links.empty? ? "Keine Links gefunden." : links.map { |l| "- #{l}" }.join("\n")}
+    MARKDOWN
+    
+    content
+  end
+
+  def extract_links(email)
+    bodies = []
+    bodies << email.html_part&.body&.decoded
+    bodies << email.text_part&.body&.decoded
+    bodies << email.body&.decoded
+    bodies.compact!
+    urls = bodies.flat_map do |body|
+      body.to_s.scan(%r{https?://[^\s)\]\}>]+})
+    end
+    urls.uniq.first(50)
+  end
+end

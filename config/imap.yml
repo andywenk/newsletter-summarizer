@@ -1,0 +1,15 @@
+default: &default
+  host: mx.qraex.de
+  port: 993
+  ssl: true
+  username: <%= ENV['IMAP_USERNAME'] %>
+  password: <%= ENV['IMAP_PASSWORD'] %>
+  folder: INBOX
+  recipient_filter: "theinformation@andy-wenk.de"
+  max_emails: 50
+
+development:
+  <<: *default
+
+production:
+  <<: *default

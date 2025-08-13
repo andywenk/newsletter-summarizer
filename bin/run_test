@@ -1,0 +1,20 @@
+#!/usr/bin/env zsh
+set -euo pipefail
+
+# Go to project root (this file is in bin/)
+SCRIPT_DIR="${0:A:h}"
+cd "${SCRIPT_DIR}/.."
+
+# Choose ruby command, prefer bundler if available
+if [[ -f Gemfile ]] && command -v bundle >/dev/null 2>&1; then
+  RUBY_CMD=(bundle exec ruby)
+else
+  RUBY_CMD=(ruby)
+fi
+
+# Default: run all tests; if args given, run those files
+if [[ $# -gt 0 ]]; then
+  exec ${RUBY_CMD} -I lib -I tests "$@"
+else
+  exec ${RUBY_CMD} -I lib -I tests -e 'Dir["tests/test_*.rb"].sort.each { |f| require_relative f }'
+fi

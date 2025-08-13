@@ -1,0 +1,19 @@
+# Environment
+.env
+.env.*
+
+# Ruby/Bundler
+/.bundle/
+/vendor/bundle/
+/Gemfile.lock
+
+# SQLite databases
+/db/*.sqlite3
+/db/*.sqlite3-journal
+
+# Generated outputs
+/html/*.html
+/summaries/*.md
+
+# macOS
+.DS_Store

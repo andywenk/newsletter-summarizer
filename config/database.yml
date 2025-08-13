@@ -1,0 +1,11 @@
+default: &default
+  adapter: sqlite3
+  database: db/newsletter_summarizer.sqlite3
+  pool: 5
+  timeout: 5000
+
+development:
+  <<: *default
+
+production:
+  <<: *default

@@ -1,0 +1,41 @@
+# Alternative IMAP-Konfigurationen für mx.qraex.de
+# Kopiere eine dieser Konfigurationen in config/imap.yml falls die Standard-Konfiguration nicht funktioniert
+
+# Option 1: Port 143 ohne SSL
+default: &default
+  host: mx.qraex.de
+  port: 143
+  ssl: false
+  username: <%= ENV['IMAP_USERNAME'] %>
+  password: <%= ENV['IMAP_PASSWORD'] %>
+  folder: INBOX
+  subject_filter: "The Briefing"
+  max_emails: 10
+
+# Option 2: Port 993 mit STARTTLS
+# default: &default
+#   host: mx.qraex.de
+#   port: 993
+#   ssl: true
+#   username: <%= ENV['IMAP_USERNAME'] %>
+#   password: <%= ENV['IMAP_PASSWORD'] %>
+#   folder: INBOX
+#   subject_filter: "The Briefing"
+#   max_emails: 10
+
+# Option 3: Port 587 (SMTP-Port, falls IMAP nicht verfügbar)
+# default: &default
+#   host: mx.qraex.de
+#   port: 587
+#   ssl: false
+#   username: <%= ENV['IMAP_USERNAME'] %>
+#   password: <%= ENV['IMAP_PASSWORD'] %>
+#   folder: INBOX
+#   subject_filter: "The Briefing"
+#   max_emails: 10
+
+development:
+  <<: *default
+
+production:
+  <<: *default
