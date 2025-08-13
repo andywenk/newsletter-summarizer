@@ -55,18 +55,21 @@ class ImapClient
   end
 
   def fetch_emails_with_recipient(recipient_filter = nil)
-    recipient_filter ||= @config['recipient_filter']
-    puts "🔍 Suche nach Emails für Empfänger: #{recipient_filter}"
+    # Unterstützt mehrere, mit Komma getrennte Empfänger
+    recipient_filters = recipient_filter ? parse_recipient_filters(recipient_filter) : recipient_filters_config
+    puts "🔍 Suche nach Emails für Empfänger: #{recipient_filters.join(', ')}"
 
     # Serverseitige Suche nach Empfänger in TO/CC/BCC
     search_keys = ['TO', 'CC', 'BCC']
     hits = []
-    search_keys.each do |key|
-      begin
-        ids = @imap.search([key, recipient_filter])
-        hits.concat(ids)
-      rescue => e
-        puts "❌ Fehler bei SEARCH #{key}: #{e.message}"
+    recipient_filters.each do |filter|
+      search_keys.each do |key|
+        begin
+          ids = @imap.search([key, filter])
+          hits.concat(ids)
+        rescue => e
+          puts "❌ Fehler bei SEARCH #{key} #{filter}: #{e.message}"
+        end
       end
     end
     message_ids = hits.uniq.sort
@@ -93,18 +96,21 @@ class ImapClient
   end
 
   def fetch_unread_emails_with_recipient(recipient_filter = nil)
-    recipient_filter ||= @config['recipient_filter']
-    puts "🔍 Suche nach ungelesenen Emails für Empfänger: #{recipient_filter}"
+    # Unterstützt mehrere, mit Komma getrennte Empfänger
+    recipient_filters = recipient_filter ? parse_recipient_filters(recipient_filter) : recipient_filters_config
+    puts "🔍 Suche nach ungelesenen Emails für Empfänger: #{recipient_filters.join(', ')}"
 
     # Kombinierte Suche: UNSEEN + (TO:addr OR CC:addr OR BCC:addr) – in IMAP mit mehreren Suchläufen
     search_keys = ['TO', 'CC', 'BCC']
     hits = []
-    search_keys.each do |key|
-      begin
-        ids = @imap.search(['UNSEEN', key, recipient_filter])
-        hits.concat(ids)
-      rescue => e
-        puts "❌ Fehler bei SEARCH UNSEEN #{key}: #{e.message}"
+    recipient_filters.each do |filter|
+      search_keys.each do |key|
+        begin
+          ids = @imap.search(['UNSEEN', key, filter])
+          hits.concat(ids)
+        rescue => e
+          puts "❌ Fehler bei SEARCH UNSEEN #{key} #{filter}: #{e.message}"
+        end
       end
     end
     message_ids = hits.uniq.sort
@@ -145,5 +151,43 @@ class ImapClient
 
   def extract_address(value)
     value.to_s.gsub(/["'<>]/, '').strip.downcase
+  end
+
+  # Liefert die konfigurierten Empfänger-Filter als Array
+  def recipient_filters_config
+    raw = @config['recipient_filter']
+    parse_recipient_filters(raw)
+  end
+
+  # Zerlegt einen String/Array in normalisierte Empfänger-Adressen
+  def parse_recipient_filters(raw)
+    case raw
+    when Array
+      raw
+    else
+      raw.to_s.split(/[;,]/)
+    end
+      .map { |v| extract_address(v) }
+      .reject { |v| v.nil? || v.empty? }
+      .uniq
+  end
+
+  public
+
+  # Öffentliche Helfer für andere Komponenten
+  def recipient_filters
+    recipient_filters_config
+  end
+
+  def matched_recipients_for_email(email)
+    filters = recipient_filters_config
+    return [] if filters.empty?
+
+    to_addresses = Array(email.to).map { |a| extract_address(a) }
+    cc_addresses = Array(email.cc).map { |a| extract_address(a) }
+    bcc_addresses = Array(email.bcc).map { |a| extract_address(a) }
+    candidates = (to_addresses + cc_addresses + bcc_addresses).uniq
+
+    filters.select { |f| candidates.include?(f) }
   end
 end

@@ -206,6 +206,14 @@
                                         <span><%= summary[:from] %></span>
                                     </div>
                                     <div class="meta-item">
+                                        <span class="meta-label">➡️ An:</span>
+                                        <span><%= summary[:to].to_s %></span>
+                                    </div>
+                                    <div class="meta-item">
+                                        <span class="meta-label">📥 Cc:</span>
+                                        <span><%= summary[:cc].to_s %></span>
+                                    </div>
+                                    <div class="meta-item">
                                         <span class="meta-label">📧 Betreff:</span>
                                         <span><%= summary[:subject] %></span>
                                     </div>
@@ -213,6 +221,18 @@
                                         <span class="meta-label">🆔 ID:</span>
                                         <span><%= summary[:message_id]&.split('@')&.first || 'Unbekannt' %></span>
                                     </div>
+                                    <% if summary[:cc].to_s.strip != '' || summary[:to].to_s.strip != '' %>
+                                    <div class="meta-item" style="grid-column: 1 / -1; opacity: 0.9;">
+                                        <span class="meta-label">🎯 Gefundene Empfänger:</span>
+                                        <span>
+                                            <% recipients = [] %>
+                                            <% recipients += summary[:to].to_s.split(',').map(&:strip) if summary[:to] %>
+                                            <% recipients += summary[:cc].to_s.split(',').map(&:strip) if summary[:cc] %>
+                                            <% recipients = recipients.uniq.reject(&:empty?) %>
+                                            <%= recipients.join(', ') %>
+                                        </span>
+                                    </div>
+                                    <% end %>
                                 </div>
                             </div>
                             <div class="card-content">

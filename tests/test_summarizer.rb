@@ -10,8 +10,31 @@ class FakeOpenAIClient
     @content = content
   end
 
-  def chat(parameters: {})
-    { 'choices' => [{ 'message' => { 'content' => @content } }] }
+  # Simuliere sowohl neues als auch altes Interface
+  def chat(parameters: nil)
+    if parameters
+      # Neues Pattern: Rückgabe als Hash
+      { 'choices' => [{ 'message' => { 'content' => @content } }] }
+    else
+      # Altes Pattern: Objekt mit completions
+      CompletionsShim.new(@content)
+    end
+  end
+
+  class CompletionsShim
+    def initialize(content) @content = content; end
+    def completions
+      Creator.new(@content)
+    end
+    class Creator
+      Choice = Struct.new(:message)
+      Message = Struct.new(:content)
+      def initialize(content) @content = content; end
+      def create(model:, messages:, max_tokens:, temperature:)
+        choices = [Choice.new(Message.new(@content))]
+        Struct.new(:choices).new(choices)
+      end
+    end
   end
 end
 
@@ -45,6 +68,33 @@ class TestSummarizer < Minitest::Test
     email = build_email(text: 'Inhalt')
     out = s.summarize_email(email)
     assert_equal 'Zusammenfassung', out
+  end
+
+  def test_handles_old_chat_interface_without_keyword_args
+    s = TestableSummarizer.new
+    # Fake Client, der bei chat(parameters: ...) ArgumentError wirft
+    broken_client = Object.new
+    def broken_client.chat(parameters: nil)
+      raise ArgumentError, 'wrong number of arguments (given 1, expected 0)' if parameters
+      # Ohne Parameter geben wir ein Objekt mit completions zurück, damit der Fallback greift
+      shim = Class.new do
+        def completions
+          creator = Class.new do
+            def create(model:, messages:, max_tokens:, temperature:)
+              message = Struct.new(:content).new('OK')
+              choice = Struct.new(:message).new(message)
+              Struct.new(:choices).new([choice])
+            end
+          end
+          creator.new
+        end
+      end
+      shim.new
+    end
+    s.instance_variable_set(:@client, broken_client)
+    email = build_email(text: 'Body')
+    out = s.summarize_email(email)
+    assert_equal 'OK', out
   end
 
   def test_generate_title_trims_quotes

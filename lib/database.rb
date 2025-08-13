@@ -12,6 +12,7 @@ class Database
     ensure_database_directory
     @db = SQLite3::Database.new(@config['database'])
     create_tables
+    migrate_schema
   end
 
   def load_database_config; raise NotImplementedError; end
@@ -23,11 +24,24 @@ class Database
         message_id TEXT UNIQUE NOT NULL,
         subject TEXT NOT NULL,
         from_address TEXT NOT NULL,
+        matched_recipients TEXT,
         received_date DATETIME NOT NULL,
         summary_file TEXT,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )
     SQL
+  end
+
+  # Stellt sicher, dass neue Spalten in bestehenden Installationen hinzugefügt werden
+  def migrate_schema
+    add_column_unless_exists('processed_emails', 'matched_recipients', 'TEXT')
+  end
+
+  def add_column_unless_exists(table, column, type)
+    cols = @db.execute("PRAGMA table_info(#{table})")
+    names = cols.map { |row| row[1] }
+    return if names.include?(column)
+    @db.execute("ALTER TABLE #{table} ADD COLUMN #{column} #{type}")
   end
 
   def ensure_database_directory
@@ -41,10 +55,10 @@ class Database
     result[0][0] > 0
   end
 
-  def mark_email_processed(message_id, subject, from_address, received_date, summary_file)
+  def mark_email_processed(message_id, subject, from_address, received_date, summary_file, matched_recipients = nil)
     @db.execute(
-      "INSERT INTO processed_emails (message_id, subject, from_address, received_date, summary_file) VALUES (?, ?, ?, ?, ?)",
-      [message_id, subject, from_address, received_date, summary_file]
+      "INSERT INTO processed_emails (message_id, subject, from_address, received_date, summary_file, matched_recipients) VALUES (?, ?, ?, ?, ?, ?)",
+      [message_id, subject, from_address, received_date, summary_file, matched_recipients]
     )
   end
 

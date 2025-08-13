@@ -9,4 +9,10 @@ class TestResetCLI < Minitest::Test
     assert status.success?, err
     assert_includes out, 'Gelöscht:'
   end
+
+  def test_version_command
+    out, err, status = Open3.capture3({ 'APP_ENV' => 'test' }, File.expand_path('../bin/summarize', __dir__), 'version')
+    assert status.success?, err
+    assert_match(/Newsletter Summarizer v\d+\.\d+\.\d+/, out)
+  end
 end

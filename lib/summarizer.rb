@@ -69,7 +69,8 @@ class Summarizer
   end
 
   def chat_request(messages:, max_tokens:, temperature:)
-    # Neueres API-Pattern (Hash-Response)
+    # Versuche mehrere mögliche SDK-Schnittstellen robust, ohne Exceptions durchzureichen
+    # 1) Neueres Pattern: client.chat(parameters: {...}) -> Hash
     begin
       response = @client.chat(
         parameters: {
@@ -79,28 +80,60 @@ class Summarizer
           temperature: temperature
         }
       )
-      content = response.dig('choices', 0, 'message', 'content')
-      return content if content
-    rescue ArgumentError, NoMethodError
-      # Fallback auf älteres Pattern
-    end
-
-    # Älteres API-Pattern (Objekt mit .completions.create)
-    if @client.respond_to?(:chat) && @client.chat.respond_to?(:completions)
-      response = @client.chat.completions.create(
-        model: @config['openai_model'],
-        messages: messages,
-        max_tokens: max_tokens,
-        temperature: temperature
-      )
-      if response.respond_to?(:choices)
-        choice = response.choices[0]
-        if choice.respond_to?(:message)
-          return choice.message.content
+      if response
+        if response.respond_to?(:dig)
+          content = response.dig('choices', 0, 'message', 'content')
+          return content if content
+        elsif response.respond_to?(:choices)
+          choice = response.choices[0]
+          return choice.message.content if choice.respond_to?(:message)
         end
       end
-      # Versuche Hash-Zugriff als Fallback
-      return response.dig('choices', 0, 'message', 'content') if response.respond_to?(:dig)
+    rescue => _e
+      # Ignoriere und versuche nächste Variante
+    end
+
+    # 2) Älteres Pattern: client.chat (ohne Argumente) -> Objekt, dann .completions.create(...)
+    begin
+      if @client.respond_to?(:chat)
+        chat_obj = @client.chat
+        if chat_obj && chat_obj.respond_to?(:completions)
+          response = chat_obj.completions.create(
+            model: @config['openai_model'],
+            messages: messages,
+            max_tokens: max_tokens,
+            temperature: temperature
+          )
+          if response.respond_to?(:choices)
+            choice = response.choices[0]
+            return choice.message.content if choice.respond_to?(:message)
+          elsif response.respond_to?(:dig)
+            content = response.dig('choices', 0, 'message', 'content')
+            return content if content
+          end
+        end
+      end
+    rescue => _e
+      # Ignoriere und versuche nächste Variante
+    end
+
+    # 3) Responses API (neueres SDK): client.responses.create(...)
+    begin
+      if @client.respond_to?(:responses) && @client.responses.respond_to?(:create)
+        response = @client.responses.create(
+          model: @config['openai_model'],
+          input: messages.map { |m| m[:content] }.join("\n\n")
+        )
+        if response.respond_to?(:output_text)
+          return response.output_text
+        elsif response.respond_to?(:dig)
+          # Grober Fallback auf mögliches Hash-Format
+          text = response.dig('output_text') || response.dig('choices', 0, 'message', 'content')
+          return text if text
+        end
+      end
+    rescue => _e
+      # Letzter Fallback unten
     end
 
     nil

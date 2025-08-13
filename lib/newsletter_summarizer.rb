@@ -31,7 +31,8 @@ class NewsletterSummarizer
       
       processed_count = 0
       emails.each do |email|
-        next if @database.email_processed?(email.message_id)
+        normalized_mid = normalize_message_id(email.message_id) || generate_fallback_message_id(email)
+        next if @database.email_processed?(normalized_mid)
         
         puts "Verarbeite Email: #{email.subject}"
         
@@ -42,8 +43,15 @@ class NewsletterSummarizer
           # Generiere Titel
           title = @summarizer.generate_title(email, summary)
           
-          # Speichere als Markdown-Datei
-          filename = @file_manager.save_summary(email, summary, title)
+          # Ermittele, welche konfigurierten Empfänger in dieser Email adressiert sind
+          matched_recipients = if @imap_client.respond_to?(:matched_recipients_for_email)
+                                  Array(@imap_client.matched_recipients_for_email(email))
+                                else
+                                  []
+                                end
+
+          # Speichere als Markdown-Datei (inkl. Empfänger-Zuordnung)
+          filename = @file_manager.save_summary(email, summary, title, matched_recipients)
           
           # Markiere als verarbeitet
           received_date = email.date || Time.now
@@ -51,11 +59,12 @@ class NewsletterSummarizer
           received_date_str = received_date.is_a?(Time) ? received_date.strftime('%Y-%m-%d %H:%M:%S') : received_date.to_s
           
           @database.mark_email_processed(
-        email.message_id || generate_fallback_message_id(email),
-        email.subject.to_s,
-        Array(email.from).join(', '),
+            normalized_mid,
+            email.subject.to_s,
+            Array(email.from).join(', '),
             received_date_str,
-            filename
+            filename,
+            matched_recipients.join(', ')
           )
           
           processed_count += 1
@@ -103,5 +112,10 @@ class NewsletterSummarizer
   def generate_fallback_message_id(email)
     base = [email.subject.to_s, (email.date || Time.now).to_s, Array(email.from).join(', ')].join('-')
     "generated-#{Digest::SHA256.hexdigest(base)[0, 16]}@local"
+  end
+
+  def normalize_message_id(mid)
+    return nil unless mid
+    mid.to_s.gsub(/[<>]/, '').strip
   end
 end

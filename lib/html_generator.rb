@@ -49,11 +49,17 @@ class HtmlGenerator
     Dir.glob(File.join(@summaries_dir, '*.md')).sort.reverse.each do |file|
       content = File.read(file, encoding: 'UTF-8')
       summary = parse_markdown_file(content, file)
-      summaries << summary if summary
+      if summary
+        summary[:file_mtime] = File.mtime(file).to_i
+        summaries << summary
+      end
     end
     
+    # Entferne Duplikate (gleiche Message-ID), behalte jeweils die neueste Version
+    unique = deduplicate_by_message_id(summaries)
+
     # Gruppiere nach Datum
-    group_summaries_by_date(summaries)
+    group_summaries_by_date(unique)
   end
 
   def group_summaries_by_date(summaries)
@@ -114,6 +120,9 @@ class HtmlGenerator
     from = extract_from(lines)
     subject = extract_subject(lines)
     message_id = extract_message_id(lines)
+    to = extract_to(lines)
+    cc = extract_cc(lines)
+    bcc = extract_bcc(lines)
     summary_text = extract_summary(lines)
     
     {
@@ -122,6 +131,9 @@ class HtmlGenerator
       from: from,
       subject: subject,
       message_id: message_id,
+      to: to,
+      cc: cc,
+      bcc: bcc,
       summary: summary_text,
       filename: File.basename(file)
     }
@@ -164,6 +176,30 @@ class HtmlGenerator
     end
   end
 
+  def extract_to(lines)
+    to_line = lines.find { |line| line.include?('**An:**') }
+    if to_line
+      m = to_line.match(/\*\*An:\*\*\s*(.*)/)
+      m[1].strip if m
+    end
+  end
+
+  def extract_cc(lines)
+    cc_line = lines.find { |line| line.include?('**Cc:**') }
+    if cc_line
+      m = cc_line.match(/\*\*Cc:\*\*\s*(.*)/)
+      m[1].strip if m
+    end
+  end
+
+  def extract_bcc(lines)
+    bcc_line = lines.find { |line| line.include?('**Bcc:**') }
+    if bcc_line
+      m = bcc_line.match(/\*\*Bcc:\*\*\s*(.*)/)
+      m[1].strip if m
+    end
+  end
+
   def extract_summary(lines)
     # 1) Altes Format mit "## Zusammenfassung"
     start_index = lines.find_index { |line| line.strip == '## Zusammenfassung' }
@@ -202,5 +238,17 @@ class HtmlGenerator
     template_content = File.read(@template_file, encoding: 'UTF-8')
     erb = ERB.new(template_content)
     erb.result(binding)
+  end
+
+  def deduplicate_by_message_id(summaries)
+    by_id = {}
+    summaries.each do |s|
+      key = s[:message_id].to_s.strip
+      key = "file:#{s[:filename]}" if key.empty?
+      if !by_id.key?(key) || (s[:file_mtime] || 0) > (by_id[key][:file_mtime] || 0)
+        by_id[key] = s
+      end
+    end
+    by_id.values
   end
 end

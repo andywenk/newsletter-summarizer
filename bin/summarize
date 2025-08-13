@@ -64,7 +64,9 @@ class NewsletterSummarizerCLI < Thor
 
   desc "version", "Zeige die Version der Anwendung"
   def version
-    puts "Newsletter Summarizer v1.0.0"
+    version_file = File.expand_path('../VERSION', __dir__)
+    version = File.exist?(version_file) ? File.read(version_file).strip : '0.0.0'
+    puts "Newsletter Summarizer v#{version}"
   end
 
   desc "reset", "Löscht alle Einträge verarbeiteter E-Mails (erneutes Scannen erlauben)"

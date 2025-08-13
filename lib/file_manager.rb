@@ -24,7 +24,7 @@ class FileManager
     FileUtils.mkdir_p(summaries_dir) unless Dir.exist?(summaries_dir)
   end
 
-  def save_summary(email, summary, title)
+  def save_summary(email, summary, title, matched_recipients = [])
     date = email.date || Time.now
     date_str = date.strftime('%Y-%m-%d')
     
@@ -42,7 +42,7 @@ class FileManager
     
     filepath = File.join(@config['summaries_dir'], filename)
     
-    content = generate_markdown_content(email, summary, title, date)
+    content = generate_markdown_content(email, summary, title, date, matched_recipients)
     
     File.write(filepath, content, encoding: 'UTF-8')
     puts "Zusammenfassung gespeichert: #{filepath}"
@@ -61,17 +61,25 @@ class FileManager
            .strip
   end
 
-  def generate_markdown_content(email, summary, title, date)
+  def generate_markdown_content(email, summary, title, date, matched_recipients = [])
     date_str = date.strftime('%Y-%m-%d %H:%M')
     links = extract_links(email)
+    to_addresses = Array(email.to).map(&:to_s).join(', ')
+    cc_addresses = Array(email.cc).map(&:to_s).join(', ')
+    bcc_addresses = Array(email.bcc).map(&:to_s).join(', ')
     
+    recipients_line = matched_recipients && !matched_recipients.empty? ? "\n**Gefundene Empfänger:** #{matched_recipients.join(', ')}\n" : "\n"
+
     content = <<~MARKDOWN
       # #{title}
 
       **Datum:** #{date_str}  
       **Von:** #{email.from.join(', ')}  
       **Betreff:** #{email.subject}  
-      **Message-ID:** #{email.message_id}
+      **Message-ID:** #{email.message_id}  
+      **An:** #{to_addresses}  
+      **Cc:** #{cc_addresses}  
+      **Bcc:** #{bcc_addresses}#{recipients_line}
 
       ---
 

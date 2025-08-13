@@ -7,9 +7,18 @@ require 'mail'
 
 class FakeDatabase
   attr_reader :marked
-  def initialize; @marked = []; end
-  def email_processed?(message_id) false; end
-  def mark_email_processed(*args) @marked << args; end
+  def initialize; @marked = []; @seen = {}; end
+  def email_processed?(message_id)
+    !!@seen[message_id]
+  end
+  def mark_email_processed(*args)
+    @marked << args
+    message_id = args[0]
+    @seen[message_id] = true
+  end
+  def remember(message_id)
+    @seen[message_id] = true
+  end
   def close; end
 end
 
@@ -17,7 +26,13 @@ class FakeImap
   attr_reader :connected, :disconnected, :called_unread
   def connect; @connected = true; end
   def disconnect; @disconnected = true; end
-  def fetch_emails_with_recipient(*) [Mail.new { subject 'S'; from 'f@example.com'; body 'B'; message_id '<1@x>'; date Time.now }]; end
+  def fetch_emails_with_recipient(*)
+    # Liefere absichtlich zwei Mails mit gleicher Message-ID (einmal mit und ohne spitze Klammern)
+    [
+      Mail.new { subject 'S'; from 'f@example.com'; body 'B'; message_id '<DUP@x>'; date Time.now },
+      Mail.new { subject 'S'; from 'f@example.com'; body 'B'; message_id 'DUP@x'; date Time.now }
+    ]
+  end
   def fetch_unread_emails_with_recipient(*)
     @called_unread = true
     fetch_emails_with_recipient
@@ -44,7 +59,8 @@ class TestNewsletterSummarizer < Minitest::Test
 
   def setup
     @ns = NewsletterSummarizer.new
-    @ns.instance_variable_set(:@database, FakeDatabase.new)
+    @db = FakeDatabase.new
+    @ns.instance_variable_set(:@database, @db)
     @ns.instance_variable_set(:@imap_client, FakeImap.new)
     @ns.instance_variable_set(:@summarizer, FakeSummarizer.new)
     @ns.instance_variable_set(:@file_manager, FakeFileManager.new)
@@ -58,6 +74,7 @@ class TestNewsletterSummarizer < Minitest::Test
     assert_equal true, html_gen.opened
 
     db = @ns.instance_variable_get(:@database)
+    # Es sollten trotz doppelter Message-ID nur 1 Eintrag markiert sein
     assert_equal 1, db.marked.length
   end
 
