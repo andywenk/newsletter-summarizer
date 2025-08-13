@@ -15,7 +15,7 @@ class NewsletterSummarizer
     @html_generator = HtmlGenerator.new
   end
 
-  def process_emails(unread_only: false)
+  def process_emails(unread_only: false, prune: false)
     puts "Starte Email-Verarbeitung..."
     
     begin
@@ -69,6 +69,15 @@ class NewsletterSummarizer
           
           processed_count += 1
           puts "Email erfolgreich verarbeitet: #{title}"
+
+          if prune
+            deleted = @imap_client.delete_message_by_message_id(normalized_mid) if @imap_client.respond_to?(:delete_message_by_message_id)
+            if deleted && deleted > 0
+              puts "🧹 Email im Postfach gelöscht (#{deleted} Treffer)"
+            else
+              puts "ℹ️ Keine passende Nachricht zum Löschen gefunden"
+            end
+          end
           
         rescue => e
           puts "Fehler bei der Verarbeitung der Email '#{email.subject}': #{e.message}"
@@ -81,6 +90,10 @@ class NewsletterSummarizer
       if processed_count > 0
         generate_and_open_html
       end
+      # Endgültig löschen, falls gewünscht
+      if prune && @imap_client.respond_to?(:expunge!)
+        @imap_client.expunge!
+      end
       
     rescue => e
       puts "Fehler bei der Email-Verarbeitung: #{e.message}"
@@ -91,6 +104,34 @@ class NewsletterSummarizer
       puts "   3. Port-Weiterleitung für IMAP (993) konfigurieren"
       puts "   4. Server-Administrator kontaktieren"
       puts "\n   Die Anwendung ist vollständig konfiguriert und bereit für den Einsatz!"
+    ensure
+      @imap_client.disconnect
+    end
+  end
+
+  # Standalone: löscht alle bereits verarbeiteten Emails im Postfach anhand der gespeicherten Message-IDs
+  def prune_processed_emails
+    puts "Starte Bereinigung (Prune) bereits verarbeiteter Emails im Postfach..."
+    begin
+      @imap_client.connect
+
+      # Lese alle gespeicherten Message-IDs aus der Datenbank
+      if @database.respond_to?(:all_processed_message_ids)
+        ids = @database.all_processed_message_ids
+      else
+        ids = fetch_all_processed_message_ids
+      end
+      total_deleted = 0
+      ids.each do |mid|
+        deleted = @imap_client.delete_message_by_message_id(mid) if @imap_client.respond_to?(:delete_message_by_message_id)
+        total_deleted += deleted.to_i
+      end
+
+      # Endgültig löschen
+      @imap_client.expunge! if @imap_client.respond_to?(:expunge!)
+      puts "Bereinigung abgeschlossen. Gelöschte Nachrichten (Treffer): #{total_deleted}"
+    rescue => e
+      puts "Fehler bei der Bereinigung: #{e.message}"
     ensure
       @imap_client.disconnect
     end
@@ -117,5 +158,15 @@ class NewsletterSummarizer
   def normalize_message_id(mid)
     return nil unless mid
     mid.to_s.gsub(/[<>]/, '').strip
+  end
+
+  def fetch_all_processed_message_ids
+    begin
+      db = @database.instance_variable_get(:@db)
+      rows = db.execute("SELECT message_id FROM processed_emails")
+      rows.map { |r| r[0].to_s }
+    rescue => _e
+      []
+    end
   end
 end

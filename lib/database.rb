@@ -70,6 +70,12 @@ class Database
     @db.execute("DELETE FROM processed_emails")
   end
 
+  # Liefert alle gespeicherten Message-IDs verarbeiteter Emails
+  def all_processed_message_ids
+    rows = @db.execute("SELECT message_id FROM processed_emails")
+    rows.map { |r| r[0].to_s }
+  end
+
   def close
     @db.close
   end

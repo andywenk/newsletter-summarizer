@@ -6,13 +6,14 @@ require_relative '../lib/newsletter_summarizer'
 class NewsletterSummarizerCLI < Thor
   desc "process", "Verarbeite alle Emails mit dem konfigurierten Subject-Filter"
   option :unread_only, type: :boolean, default: false, desc: "Nur ungelesene Emails verarbeiten"
+  option :prune, type: :boolean, default: false, desc: "Nach dem Zusammenfassen die Emails im Postfach löschen"
   option :no_open, type: :boolean, default: false, desc: "HTML nicht automatisch im Browser öffnen"
   
   def process
     summarizer = NewsletterSummarizer.new
     
     begin
-      summarizer.process_emails(unread_only: options[:unread_only])
+      summarizer.process_emails(unread_only: options[:unread_only], prune: options[:prune])
     ensure
       summarizer.cleanup
     end
@@ -88,6 +89,16 @@ class NewsletterSummarizerCLI < Thor
     after = db.processed_emails_count
     db.close
     puts "Gelöscht: #{before - after} Einträge (jetzt #{after} in der DB)."
+  end
+
+  desc "prune", "Löscht Emails im Postfach, die bereits zusammengefasst wurden"
+  def prune
+    summarizer = NewsletterSummarizer.new
+    begin
+      summarizer.prune_processed_emails
+    ensure
+      summarizer.cleanup
+    end
   end
 end
 

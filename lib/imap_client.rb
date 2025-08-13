@@ -54,6 +54,41 @@ class ImapClient
     @imap.disconnect if @imap
   end
 
+  # Markiert Nachrichten mit gegebener Message-ID als gelöscht und gibt Anzahl betroffener Mails zurück
+  # Hinweis: Manche Server speichern die Message-ID mit spitzen Klammern. Wir versuchen beide Varianten.
+  def delete_message_by_message_id(message_id)
+    return 0 if message_id.nil? || message_id.to_s.strip.empty?
+
+    ids = []
+    begin
+      raw = message_id.to_s.strip
+      with_brackets = raw.start_with?('<') ? raw : "<#{raw}>"
+      without_brackets = raw.gsub(/[<>]/, '')
+
+      # Suche beide Varianten
+      ids |= @imap.search(['HEADER', 'Message-ID', with_brackets])
+      ids |= @imap.search(['HEADER', 'Message-ID', without_brackets])
+
+      ids.uniq!
+      ids.each do |seqno|
+        @imap.store(seqno, '+FLAGS', [:Deleted])
+      end
+    rescue => e
+      puts "❌ Fehler beim Löschen nach Message-ID #{message_id}: #{e.message}"
+    end
+
+    ids.length
+  end
+
+  # Führt endgültiges Löschen gelöschter Nachrichten durch
+  def expunge!
+    begin
+      @imap.expunge
+    rescue => e
+      puts "❌ Fehler bei EXPUNGE: #{e.message}"
+    end
+  end
+
   def fetch_emails_with_recipient(recipient_filter = nil)
     # Unterstützt mehrere, mit Komma getrennte Empfänger
     recipient_filters = recipient_filter ? parse_recipient_filters(recipient_filter) : recipient_filters_config
