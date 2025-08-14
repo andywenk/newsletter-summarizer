@@ -32,7 +32,7 @@ class Database
     SQL
   end
 
-  # Stellt sicher, dass neue Spalten in bestehenden Installationen hinzugefügt werden
+  # Ensure new columns are added in existing installations
   def migrate_schema
     add_column_unless_exists('processed_emails', 'matched_recipients', 'TEXT')
   end
@@ -70,7 +70,7 @@ class Database
     @db.execute("DELETE FROM processed_emails")
   end
 
-  # Liefert alle gespeicherten Message-IDs verarbeiteter Emails
+  # Returns all stored Message-IDs of processed emails
   def all_processed_message_ids
     rows = @db.execute("SELECT message_id FROM processed_emails")
     rows.map { |r| r[0].to_s }

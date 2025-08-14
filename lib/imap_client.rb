@@ -22,27 +22,27 @@ class ImapClient
   end
 
   def test_connection
-    puts "Teste IMAP-Verbindung zu #{@config['host']}:#{@config['port']} (SSL/TLS aktiviert)..."
-    puts "Benutzername: #{@config['username']}"
+    puts "Testing IMAP connection to #{@config['host']}:#{@config['port']} (SSL/TLS enabled)..."
+    puts "Username: #{@config['username']}"
     
     begin
       ssl_option = @config['ssl'] ? { verify_mode: OpenSSL::SSL::VERIFY_PEER } : false
       @imap = Net::IMAP.new(@config['host'], @config['port'], ssl_option)
-      puts "✓ Verbindung zum Server hergestellt (SSL/TLS)"
+      puts "✓ Connected to server (SSL/TLS)"
       
       @imap.login(@config['username'], @config['password'])
-      puts "✓ Login erfolgreich (Passwort-Authentifizierung)"
+      puts "✓ Login successful (password authentication)"
       
       @imap.select(@config['folder'])
-      puts "✓ Ordner '#{@config['folder']}' ausgewählt"
+      puts "✓ Selected folder '#{@config['folder']}'"
       
-      # Teste, ob Emails vorhanden sind
+      # Check whether emails exist
       message_count = @imap.search(['ALL']).length
-      puts "✓ #{message_count} Emails im Postfach gefunden"
+      puts "✓ #{message_count} emails found in mailbox"
       
       return true
     rescue => e
-      puts "✗ Fehler bei der IMAP-Verbindung: #{e.message}"
+      puts "✗ Error during IMAP connection: #{e.message}"
       return false
     ensure
       disconnect if @imap
@@ -54,8 +54,8 @@ class ImapClient
     @imap.disconnect if @imap
   end
 
-  # Markiert Nachrichten mit gegebener Message-ID als gelöscht und gibt Anzahl betroffener Mails zurück
-  # Hinweis: Manche Server speichern die Message-ID mit spitzen Klammern. Wir versuchen beide Varianten.
+  # Marks messages with the given Message-ID as deleted and returns the number of affected messages
+  # Note: Some servers store Message-ID with angle brackets. We try both variants.
   def delete_message_by_message_id(message_id)
     return 0 if message_id.nil? || message_id.to_s.strip.empty?
 
@@ -65,7 +65,7 @@ class ImapClient
       with_brackets = raw.start_with?('<') ? raw : "<#{raw}>"
       without_brackets = raw.gsub(/[<>]/, '')
 
-      # Suche beide Varianten
+      # Search for both variants
       ids |= @imap.search(['HEADER', 'Message-ID', with_brackets])
       ids |= @imap.search(['HEADER', 'Message-ID', without_brackets])
 
@@ -74,27 +74,27 @@ class ImapClient
         @imap.store(seqno, '+FLAGS', [:Deleted])
       end
     rescue => e
-      puts "❌ Fehler beim Löschen nach Message-ID #{message_id}: #{e.message}"
+      puts "❌ Error deleting by Message-ID #{message_id}: #{e.message}"
     end
 
     ids.length
   end
 
-  # Führt endgültiges Löschen gelöschter Nachrichten durch
+  # Permanently removes messages flagged as deleted
   def expunge!
     begin
       @imap.expunge
     rescue => e
-      puts "❌ Fehler bei EXPUNGE: #{e.message}"
+      puts "❌ Error during EXPUNGE: #{e.message}"
     end
   end
 
   def fetch_emails_with_recipient(recipient_filter = nil)
-    # Unterstützt mehrere, mit Komma getrennte Empfänger
+    # Supports multiple, comma-separated recipients
     recipient_filters = recipient_filter ? parse_recipient_filters(recipient_filter) : recipient_filters_config
-    puts "🔍 Suche nach Emails für Empfänger: #{recipient_filters.join(', ')}"
+    puts "🔍 Searching emails for recipients: #{recipient_filters.join(', ')}"
 
-    # Serverseitige Suche nach Empfänger in TO/CC/BCC
+    # Server-side search across TO/CC/BCC
     search_keys = ['TO', 'CC', 'BCC']
     hits = []
     recipient_filters.each do |filter|
@@ -103,14 +103,14 @@ class ImapClient
           ids = @imap.search([key, filter])
           hits.concat(ids)
         rescue => e
-          puts "❌ Fehler bei SEARCH #{key} #{filter}: #{e.message}"
+          puts "❌ Error during SEARCH #{key} #{filter}: #{e.message}"
         end
       end
     end
     message_ids = hits.uniq.sort
-    puts "📧 Treffer nach Empfänger-Suche: #{message_ids.length}"
+    puts "📧 Matches after recipient search: #{message_ids.length}"
 
-    # Begrenze die Anzahl der zu prüfenden Emails
+    # Limit number of emails to fetch
     max_emails = @config['max_emails']
     message_ids = message_ids.last(max_emails) if message_ids.length > max_emails
 
@@ -119,23 +119,23 @@ class ImapClient
       begin
         email_data = @imap.fetch(id, 'RFC822')[0]
         email = Mail.read_from_string(email_data.attr['RFC822'])
-        puts "  ✅ Email #{id}: #{email.subject} (Von: #{email.from&.join(', ')}, An: #{email.to&.join(', ')})"
+        puts "  ✅ Email #{id}: #{email.subject} (From: #{email.from&.join(', ')}, To: #{email.to&.join(', ')})"
         emails << email
       rescue => e
-        puts "❌ Fehler beim Lesen der Email #{id}: #{e.message}"
+        puts "❌ Error reading email #{id}: #{e.message}"
       end
     end
 
-    puts "✅ #{emails.length} passende Emails gefunden und geladen"
+    puts "✅ #{emails.length} matching emails loaded"
     emails
   end
 
   def fetch_unread_emails_with_recipient(recipient_filter = nil)
-    # Unterstützt mehrere, mit Komma getrennte Empfänger
+    # Supports multiple, comma-separated recipients
     recipient_filters = recipient_filter ? parse_recipient_filters(recipient_filter) : recipient_filters_config
-    puts "🔍 Suche nach ungelesenen Emails für Empfänger: #{recipient_filters.join(', ')}"
+    puts "🔍 Searching unread emails for recipients: #{recipient_filters.join(', ')}"
 
-    # Kombinierte Suche: UNSEEN + (TO:addr OR CC:addr OR BCC:addr) – in IMAP mit mehreren Suchläufen
+    # Combined search: UNSEEN + (TO:addr OR CC:addr OR BCC:addr) – in IMAP via multiple runs
     search_keys = ['TO', 'CC', 'BCC']
     hits = []
     recipient_filters.each do |filter|
@@ -144,12 +144,12 @@ class ImapClient
           ids = @imap.search(['UNSEEN', key, filter])
           hits.concat(ids)
         rescue => e
-          puts "❌ Fehler bei SEARCH UNSEEN #{key} #{filter}: #{e.message}"
+          puts "❌ Error during SEARCH UNSEEN #{key} #{filter}: #{e.message}"
         end
       end
     end
     message_ids = hits.uniq.sort
-    puts "📧 Ungelesene Treffer nach Empfänger-Suche: #{message_ids.length}"
+    puts "📧 Unread matches after recipient search: #{message_ids.length}"
 
     max_emails = @config['max_emails']
     message_ids = message_ids.last(max_emails) if message_ids.length > max_emails
@@ -159,14 +159,14 @@ class ImapClient
       begin
         email_data = @imap.fetch(id, 'RFC822')[0]
         email = Mail.read_from_string(email_data.attr['RFC822'])
-        puts "  ✅ Ungelesene Email #{id}: #{email.subject} (Von: #{email.from&.join(', ')}, An: #{email.to&.join(', ')})"
+        puts "  ✅ Unread email #{id}: #{email.subject} (From: #{email.from&.join(', ')}, To: #{email.to&.join(', ')})"
         emails << email
       rescue => e
-        puts "❌ Fehler beim Lesen der Email #{id}: #{e.message}"
+        puts "❌ Error reading email #{id}: #{e.message}"
       end
     end
 
-    puts "✅ #{emails.length} passende ungelesene Emails gefunden und geladen"
+    puts "✅ #{emails.length} matching unread emails loaded"
     emails
   end
 
@@ -188,13 +188,13 @@ class ImapClient
     value.to_s.gsub(/["'<>]/, '').strip.downcase
   end
 
-  # Liefert die konfigurierten Empfänger-Filter als Array
+  # Returns the configured recipient filters as an array
   def recipient_filters_config
     raw = @config['recipient_filter']
     parse_recipient_filters(raw)
   end
 
-  # Zerlegt einen String/Array in normalisierte Empfänger-Adressen
+  # Parses a string/array into normalized recipient addresses
   def parse_recipient_filters(raw)
     case raw
     when Array
@@ -209,7 +209,7 @@ class ImapClient
 
   public
 
-  # Öffentliche Helfer für andere Komponenten
+  # Public helpers for other components
   def recipient_filters
     recipient_filters_config
   end

@@ -4,10 +4,10 @@ require 'thor'
 require_relative '../lib/newsletter_summarizer'
 
 class NewsletterSummarizerCLI < Thor
-  desc "process", "Verarbeite alle Emails mit dem konfigurierten Subject-Filter"
-  option :unread_only, type: :boolean, default: false, desc: "Nur ungelesene Emails verarbeiten"
-  option :prune, type: :boolean, default: false, desc: "Nach dem Zusammenfassen die Emails im Postfach löschen"
-  option :no_open, type: :boolean, default: false, desc: "HTML nicht automatisch im Browser öffnen"
+  desc "process", "Process emails using the configured recipient filter"
+  option :unread_only, type: :boolean, default: false, desc: "Process only unread emails"
+  option :prune, type: :boolean, default: false, desc: "Delete emails from the mailbox after summarizing"
+  option :no_open, type: :boolean, default: false, desc: "Do not automatically open HTML in browser"
   
   def process
     summarizer = NewsletterSummarizer.new
@@ -19,28 +19,28 @@ class NewsletterSummarizerCLI < Thor
     end
   end
 
-  desc "html", "Generiere HTML-Seite mit allen Zusammenfassungen und öffne sie im Browser (Option: --no_open)"
-  option :no_open, type: :boolean, default: false, desc: "HTML nicht automatisch im Browser öffnen"
+  desc "html", "Generate an HTML page with all summaries and open it in the browser (Option: --no_open)"
+  option :no_open, type: :boolean, default: false, desc: "Do not automatically open HTML in browser"
   def html
     require_relative '../lib/html_generator'
     
-    puts "📄 Generiere HTML-Seite mit Zusammenfassungen..."
+    puts "📄 Generating HTML page with summaries..."
     
     begin
       html_generator = HtmlGenerator.new
       html_file = html_generator.generate_html_page
       html_generator.open_in_firefox(html_file) unless options[:no_open]
-      puts "✅ HTML-Seite in Firefox geöffnet"
+      puts "✅ Opened HTML page in Firefox"
     rescue => e
-      puts "Fehler beim Generieren der HTML-Seite: #{e.message}"
+      puts "Error generating HTML page: #{e.message}"
     end
   end
 
-  desc "test", "Teste die IMAP-Verbindung"
+  desc "test", "Test the IMAP connection"
   def test
     require_relative '../lib/imap_client'
     
-    puts "Newsletter Summarizer - IMAP-Verbindungstest"
+    puts "Newsletter Summarizer - IMAP connection test"
     puts "============================================"
     
     begin
@@ -48,36 +48,36 @@ class NewsletterSummarizerCLI < Thor
       success = client.test_connection
       
       if success
-        puts "\n✅ IMAP-Verbindung erfolgreich!"
-        puts "Sie können jetzt Emails verarbeiten mit:"
+        puts "\n✅ IMAP connection successful!"
+        puts "You can now process emails with:"
         puts "  bundle exec ruby bin/summarize process"
       else
-        puts "\n❌ IMAP-Verbindung fehlgeschlagen!"
-        puts "Bitte prüfen Sie:"
-        puts "  1. Ihre Zugangsdaten in der .env Datei"
-        puts "  2. Die Server-Einstellungen in config/imap.yml"
-        puts "  3. Ob der Server IMAP-Zugriff erlaubt"
+        puts "\n❌ IMAP connection failed!"
+        puts "Please check:"
+        puts "  1. Your credentials in the .env file"
+        puts "  2. The server settings in config/imap.yml"
+        puts "  3. Whether the server allows IMAP access"
       end
     rescue => e
-      puts "Fehler beim Testen: #{e.message}"
+      puts "Error during test: #{e.message}"
     end
   end
 
-  desc "version", "Zeige die Version der Anwendung"
+  desc "version", "Show application version"
   def version
     version_file = File.expand_path('../VERSION', __dir__)
     version = File.exist?(version_file) ? File.read(version_file).strip : '0.0.0'
     puts "Newsletter Summarizer v#{version}"
   end
 
-  desc "reset", "Löscht alle Einträge verarbeiteter E-Mails (erneutes Scannen erlauben)"
-  method_option :force, type: :boolean, default: false, desc: "Ohne Rückfrage löschen"
+  desc "reset", "Delete all records of processed emails (allows re-scanning)"
+  method_option :force, type: :boolean, default: false, desc: "Delete without confirmation"
   def reset
     unless options[:force]
-      print "Sind Sie sicher, dass Sie alle Einträge löschen möchten? [y/N]: "
+      print "Are you sure you want to delete all entries? [y/N]: "
       answer = $stdin.gets.to_s.strip.downcase
-      unless %w[y yes j ja].include?(answer)
-        puts "Abgebrochen."
+      unless %w[y yes].include?(answer)
+        puts "Cancelled."
         return
       end
     end
@@ -88,10 +88,10 @@ class NewsletterSummarizerCLI < Thor
     db.clear_processed_emails
     after = db.processed_emails_count
     db.close
-    puts "Gelöscht: #{before - after} Einträge (jetzt #{after} in der DB)."
+    puts "Deleted: #{before - after} entries (now #{after} in DB)."
   end
 
-  desc "prune", "Löscht Emails im Postfach, die bereits zusammengefasst wurden"
+  desc "prune", "Delete emails in the mailbox that were already summarized"
   def prune
     summarizer = NewsletterSummarizer.new
     begin

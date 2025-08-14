@@ -1,53 +1,56 @@
 # Newsletter Summarizer
 
-Eine Ruby-Anwendung, die automatisch Emails aus einem IMAP-Postfach liest, Zusammenfassungen mit OpenAI erstellt und diese als Markdown-Dateien speichert. Zusätzlich wird eine HTML-Seite mit allen Zusammenfassungen generiert und im Browser geöffnet.
+A Ruby application that automatically reads emails from an IMAP mailbox, generates summaries with OpenAI, and saves them as Markdown files. It also generates an HTML page with all summaries and opens it in your browser.
 
 ## Features
 
-- 📧 **IMAP-Email-Verarbeitung** - Liest Emails von einem IMAP-Server
-- 🤖 **KI-gestützte Zusammenfassungen** - Nutzt OpenAI GPT für automatische Zusammenfassungen
-- 📝 **Markdown-Export** - Speichert Zusammenfassungen als strukturierte Markdown-Dateien
-- 🗄️ **SQLite-Datenbank** - Verhindert Duplikate und trackt verarbeitete Emails
-- 🌐 **HTML-Report** - Generiert eine schöne HTML-Seite mit allen Zusammenfassungen
-- 📅 **Datums-Gruppierung** - Gruppiert Zusammenfassungen nach Datum
-- ⏰ **Timestamp-Dateien** - Eindeutige HTML-Dateien mit Zeitstempel
-- 🎯 **Empfänger-Filter** - Filtert Emails nach spezifischer Empfänger-Adresse
+- 📧 IMAP email processing
+- 🤖 AI-powered summaries (OpenAI GPT)
+- 📝 Markdown export
+- 🗄️ SQLite database to prevent duplicates
+- 🌐 HTML report
+- 📅 Date grouping
+- ⏰ Timestamped HTML files
+- 🎯 Recipient filter
 
 ## Installation
 
-### Voraussetzungen
+### Requirements
 
 - Ruby 3.2.2
 - Bundler
-- IMAP-Zugang zu einem Email-Server
-- OpenAI API-Key
+- IMAP access to an email server
+- OpenAI API key
 
 ### Setup
 
-1. **Repository klonen und Dependencies installieren:**
+#### 1. Clone and install dependencies:
+
 ```bash
 git clone <repository-url>
 cd newsletter-summarizer
 bundle install
 ```
 
-2. **Umgebungsvariablen konfigurieren:**
+#### 2. Configure environment variables:
+
 ```bash
 cp env.example .env
 ```
 
-3. **`.env` Datei bearbeiten:**
+#### 3. Edit `.env`:
+
 ```bash
 IMAP_USERNAME=your_email@domain.com
 IMAP_PASSWORD=your_password
 OPENAI_API_KEY=your_openai_api_key
 ```
 
-## Konfiguration
+## Configuration
 
-### IMAP-Server-Konfiguration
+### IMAP server configuration
 
-Die IMAP-Einstellungen finden Sie in `config/imap.yml`:
+`config/imap.yml`:
 
 ```yaml
 default: &default
@@ -61,32 +64,33 @@ default: &default
   max_emails: 10
 ```
 
-**Wichtige Einstellungen:**
-- `host`: IMAP-Server-Adresse
-- `port`: IMAP-Port (meist 993 für SSL)
-- `ssl`: SSL/TLS aktivieren (empfohlen)
-- `recipient_filter`: Empfänger-Email-Adresse für Filterung
-- `max_emails`: Maximale Anzahl zu verarbeitender Emails
+Key settings:
 
-### Alternative IMAP-Konfigurationen
+- host: IMAP server address
+- port: IMAP port (usually 993 for SSL)
+- ssl: enable SSL/TLS (recommended)
+- recipient_filter: recipient email address to filter
+- max_emails: max number of emails to process
 
-Falls Sie andere IMAP-Server verwenden, können Sie die Konfiguration anpassen:
+### Alternative IMAP configurations
+
+Adjust for other servers as needed:
 
 ```yaml
-# Gmail (Beispiel)
+# Gmail (example)
 host: imap.gmail.com
 port: 993
 ssl: true
 
-# Andere Server (Beispiel)
+# Other server (example)
 host: mail.example.com
 port: 143
 ssl: false
 ```
 
-### OpenAI-Konfiguration
+### OpenAI configuration
 
-Die OpenAI-Einstellungen finden Sie in `config/application.yml`:
+`config/application.yml`:
 
 ```yaml
 default: &default
@@ -97,142 +101,147 @@ default: &default
   temperature: 0.3
 ```
 
-## Verwendung
+## Usage
 
-### Grundlegende Befehle
+### Basic commands
 
 ```bash
-# Emails verarbeiten und HTML-Report generieren
+# Process emails and generate HTML report
 bundle exec ruby bin/summarize process
 
-# Nur ungelesene Emails verarbeiten
+# Process only unread emails
 bundle exec ruby bin/summarize process --unread-only
 
-# HTML-Report manuell generieren
+# Generate HTML report manually
 bundle exec ruby bin/summarize html
 
-# IMAP-Verbindung testen
+# Test IMAP connection
 bundle exec ruby bin/summarize test
 
-# Version anzeigen
+# Show version
 bundle exec ruby bin/summarize version
 ```
 
-### Email-Verarbeitung
+### Email processing
 
-Die Anwendung:
+The app:
 
-1. **Verbindet** sich mit dem IMAP-Server
-2. **Filtert** Emails nach der konfigurierten Empfänger-Adresse (`theinformation@andy-wenk.de`)
-3. **Erstellt** Zusammenfassungen mit OpenAI GPT
-4. **Speichert** Markdown-Dateien im `summaries/` Verzeichnis
-5. **Trackt** verarbeitete Emails in der SQLite-Datenbank
-6. **Generiert** eine HTML-Seite mit allen Zusammenfassungen
-7. **Öffnet** die HTML-Seite automatisch im Firefox
+1. Connects to the IMAP server
+2. Filters emails by the configured recipient address (`theinformation@andy-wenk.de`)
+3. Creates summaries with OpenAI GPT
+4. Saves Markdown files in `summaries/`
+5. Tracks processed emails in SQLite
+6. Generates an HTML page with all summaries
+7. Opens the HTML page automatically in Firefox
 
-### Ausgabe
+### Output
 
-- **Markdown-Dateien:** `summaries/YYYY-MM-DD_titel_der_zusammenfassung.md`
-- **HTML-Report:** `html/summaries_YYYYMMDD_HHMMSS.html`
-- **Datenbank:** `db/newsletter_summarizer.sqlite3`
+- Markdown: `summaries/YYYY-MM-DD_title_of_summary.md`
+- HTML report: `html/summaries_YYYYMMDD_HHMMSS.html`
+- Database: `db/newsletter_summarizer.sqlite3`
 
-## Dateistruktur
+## Project structure
 
-```
+```bash
 newsletter-summarizer/
 ├── bin/
-│   └── summarize          # CLI-Hauptskript
+│   └── summarize          # CLI entry point
 ├── config/
-│   ├── database.yml       # SQLite-Konfiguration
-│   ├── imap.yml          # IMAP-Server-Konfiguration
-│   └── application.yml    # Anwendungs-Konfiguration
+│   ├── database.yml       # SQLite configuration
+│   ├── imap.yml           # IMAP configuration
+│   └── application.yml    # App configuration
 ├── lib/
-│   ├── database.rb        # SQLite-Datenbank-Management
-│   ├── imap_client.rb    # IMAP-Client
-│   ├── summarizer.rb     # OpenAI-Integration
-│   ├── file_manager.rb   # Markdown-Datei-Management
-│   ├── html_generator.rb # HTML-Report-Generator
-│   └── newsletter_summarizer.rb # Hauptanwendung
+│   ├── database.rb        # SQLite database management
+│   ├── imap_client.rb     # IMAP client
+│   ├── summarizer.rb      # OpenAI integration
+│   ├── file_manager.rb    # Markdown file management
+│   ├── html_generator.rb  # HTML report generation
+│   └── newsletter_summarizer.rb # Main app
 ├── templates/
-│   └── summaries.html.erb # HTML-Template
-├── summaries/             # Generierte Markdown-Dateien
-├── html/                  # Generierte HTML-Dateien
-├── db/                    # SQLite-Datenbank
-├── Gemfile               # Ruby-Dependencies
-└── README.md             # Diese Datei
+│   └── summaries.html.erb # HTML template
+├── summaries/             # Generated markdown files
+├── html/                  # Generated HTML files
+├── db/                    # SQLite database
+├── Gemfile                # Ruby dependencies
+└── README.md              # This file
 ```
 
-## HTML-Report Features
+## HTML report features
 
-Die generierte HTML-Seite bietet:
-
-- **📅 Datums-Gruppierung** - Zusammenfassungen nach Datum gruppiert
-- **📊 Übersicht-Statistiken** - Anzahl Zusammenfassungen und Tage
-- **🎨 Modernes Design** - Responsive Layout mit Animationen
-- **📱 Mobile-optimiert** - Funktioniert auf allen Geräten
-- **⏰ Timestamp-Dateien** - Eindeutige Dateinamen mit Zeitstempel
+- 📅 Group by date
+- 📊 Overview stats
+- 🎨 Modern responsive design
+- 📱 Mobile-friendly
+- ⏰ Timestamped filenames
 
 ## Troubleshooting
 
-### IMAP-Verbindungsprobleme
+### IMAP connection issues
 
-**Problem:** `No route to host` oder `Connection refused`
+Problem: `No route to host` or `Connection refused`
+
 ```bash
-# Testen Sie die Verbindung:
+# Test the connection
 bundle exec ruby bin/summarize test
 ```
 
-**Lösungen:**
-1. **VPN-Verbindung** zum Server-Netzwerk herstellen
-2. **Anwendung lokal** auf einem Computer im Netzwerk ausführen
-3. **Port-Weiterleitung** für IMAP (993) konfigurieren
-4. **Server-Administrator** kontaktieren
+Solutions:
 
-### SSL-Zertifikatsprobleme
+1. Connect to the server network via VPN
+2. Run the app locally within the network
+3. Configure port forwarding for IMAP (993)
+4. Contact your server administrator
 
-**Problem:** `certificate verify failed`
-- Die Anwendung deaktiviert automatisch die Hostname-Verifizierung
-- Für Produktionsumgebungen sollten Sie gültige SSL-Zertifikate verwenden
+### SSL certificate issues
 
-### OpenAI API-Probleme
+Problem: `certificate verify failed`
 
-**Problem:** `wrong number of arguments` oder API-Fehler
-- Überprüfen Sie Ihren OpenAI API-Key in der `.env` Datei
-- Stellen Sie sicher, dass Guthaben auf Ihrem OpenAI-Account vorhanden ist
+- The app enables SSL/TLS by default
+- For production, use valid SSL certificates
 
-### Empfänger-Filter
+### OpenAI API issues
 
-**Problem:** Keine Emails gefunden
-- Überprüfen Sie die `recipient_filter` Einstellung in `config/imap.yml`
-- Stellen Sie sicher, dass Emails an die konfigurierte Adresse gesendet wurden
+Problem: `wrong number of arguments` or API errors
 
-## Entwicklung
+- Verify your OpenAI API key in `.env`
+- Ensure your OpenAI account has credit
 
-### Tests ausführen
+### Recipient filter
+
+Problem: No emails found
+
+- Check `recipient_filter` in `config/imap.yml`
+- Ensure emails were sent to the configured address
+
+## Development
+
+### Run tests
 
 ```bash
-# Anwendung testen
+# App test
 ruby test_app.rb
 
-# IMAP-Verbindung testen
+# IMAP connection test
 bundle exec ruby bin/summarize test
 ```
 
-### Logs und Debugging
+### Logs and debugging
 
-Die Anwendung gibt detaillierte Logs aus:
-- Verbindungsstatus
-- Gefundene Emails
-- Verarbeitungsfortschritt
-- Fehlermeldungen
+The app prints detailed logs:
 
-## Lizenz
+- Connection status
+- Emails found
+- Processing progress
+- Errors
 
-Dieses Projekt ist für private Nutzung bestimmt.
+## License
+
+Private use only.
 
 ## Support
 
-Bei Problemen oder Fragen:
-1. Überprüfen Sie die Konfiguration in den YAML-Dateien
-2. Testen Sie die IMAP-Verbindung mit `bundle exec ruby bin/summarize test`
-3. Prüfen Sie die Logs für detaillierte Fehlermeldungen
+If you have issues or questions:
+
+1. Check the YAML configs
+2. Test the IMAP connection with `bundle exec ruby bin/summarize test`
+3. Review the logs for detailed error messages

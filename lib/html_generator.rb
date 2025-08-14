@@ -18,12 +18,12 @@ class HtmlGenerator
     summaries = load_summaries
     html_content = generate_html_content(summaries)
     
-    # Erstelle Dateinamen mit Timestamp
+    # Create filename with timestamp
     timestamp = Time.now.strftime('%Y%m%d_%H%M%S')
     html_file = File.join(@html_dir, "summaries_#{timestamp}.html")
     
     File.write(html_file, html_content, encoding: 'UTF-8')
-    puts "HTML-Seite erstellt: #{html_file}"
+    puts "HTML page created: #{html_file}"
     
     html_file
   end
@@ -38,7 +38,7 @@ class HtmlGenerator
     elsif RUBY_PLATFORM =~ /mingw|mswin/
       system('start', html_file)
     end
-    puts "HTML-Seite in Browser geöffnet"
+    puts "Opened HTML page in browser"
   end
 
   private
@@ -55,10 +55,10 @@ class HtmlGenerator
       end
     end
     
-    # Entferne Duplikate (gleiche Message-ID), behalte jeweils die neueste Version
+    # Remove duplicates (same Message-ID), keep the most recent version
     unique = deduplicate_by_message_id(summaries)
 
-    # Gruppiere nach Datum
+    # Group by date
     group_summaries_by_date(unique)
   end
 
@@ -71,40 +71,41 @@ class HtmlGenerator
       grouped[date_key] << summary
     end
     
-    # Sortiere die Gruppen nach Datum (neueste zuerst)
+    # Sort groups by date (newest first)
     grouped.sort_by { |date_key, _| date_key }.reverse.to_h
   end
 
   def extract_date_key(date_string)
-    return "Unbekannt" unless date_string
+    return "Unknown" unless date_string
     
     begin
-      # Versuche verschiedene Datumsformate zu parsen
+      # Try parsing different date formats
       if date_string.match(/\d{4}-\d{2}-\d{2}/)
         date = Date.parse(date_string.split(' ').first)
         date.strftime('%Y-%m-%d')
       else
-        # Fallback für andere Formate
+        # Fallback for other formats
         date_string.split(' ').first
       end
     rescue
-      "Unbekannt"
+      "Unknown"
     end
   end
 
   def format_date_key(date_key)
-    return "Unbekanntes Datum" if date_key == "Unbekannt"
+    # Nutzerfreundlicher Fallback, wenn kein Datum erkannt wurde
+    return "Unbekanntes Datum" if date_key == "Unknown"
     
     begin
       date = Date.parse(date_key)
-      # Deutsche Datumsformatierung
+      # Date labels
       case date_key
       when Date.today.strftime('%Y-%m-%d')
-        "Heute (#{date.strftime('%d.%m.%Y')})"
+        "Today (#{date.strftime('%d.%m.%Y')})"
       when (Date.today - 1).strftime('%Y-%m-%d')
-        "Gestern (#{date.strftime('%d.%m.%Y')})"
+        "Yesterday (#{date.strftime('%d.%m.%Y')})"
       else
-        date.strftime('%A, %d. %B %Y') # z.B. "Donnerstag, 07. August 2025"
+        date.strftime('%A, %d %B %Y')
       end
     rescue
       date_key
@@ -114,7 +115,7 @@ class HtmlGenerator
   def parse_markdown_file(content, file)
     lines = content.split("\n")
     
-    # Extrahiere Metadaten
+    # Extract metadata
     title = extract_title(lines)
     date = extract_date(lines)
     from = extract_from(lines)
@@ -145,25 +146,28 @@ class HtmlGenerator
   end
 
   def extract_date(lines)
-    date_line = lines.find { |line| line.include?('**Datum:**') }
+    # Support both German and English labels: **Datum:** or **Date:**
+    date_line = lines.find { |line| line =~ /\*\*(?:Datum|Date):\*\*/ }
     if date_line
-      date_match = date_line.match(/\*\*Datum:\*\*\s*(.+)/)
+      date_match = date_line.match(/\*\*(?:Datum|Date):\*\*\s*(.+)/)
       date_match[1].strip if date_match
     end
   end
 
   def extract_from(lines)
-    from_line = lines.find { |line| line.include?('**Von:**') }
+    # Support **Von:** or **From:**
+    from_line = lines.find { |line| line =~ /\*\*(?:Von|From):\*\*/ }
     if from_line
-      from_match = from_line.match(/\*\*Von:\*\*\s*(.+)/)
+      from_match = from_line.match(/\*\*(?:Von|From):\*\*\s*(.+)/)
       from_match[1].strip if from_match
     end
   end
 
   def extract_subject(lines)
-    subject_line = lines.find { |line| line.include?('**Betreff:**') }
+    # Support **Betreff:** or **Subject:**
+    subject_line = lines.find { |line| line =~ /\*\*(?:Betreff|Subject):\*\*/ }
     if subject_line
-      subject_match = subject_line.match(/\*\*Betreff:\*\*\s*(.+)/)
+      subject_match = subject_line.match(/\*\*(?:Betreff|Subject):\*\*\s*(.+)/)
       subject_match[1].strip if subject_match
     end
   end
@@ -177,9 +181,10 @@ class HtmlGenerator
   end
 
   def extract_to(lines)
-    to_line = lines.find { |line| line.include?('**An:**') }
+    # Support **An:** or **To:**
+    to_line = lines.find { |line| line =~ /\*\*(?:An|To):\*\*/ }
     if to_line
-      m = to_line.match(/\*\*An:\*\*\s*(.*)/)
+      m = to_line.match(/\*\*(?:An|To):\*\*\s*(.*)/)
       m[1].strip if m
     end
   end
@@ -201,7 +206,7 @@ class HtmlGenerator
   end
 
   def extract_summary(lines)
-    # 1) Altes Format mit "## Zusammenfassung"
+    # 1) Old format with "## Summary"
     start_index = lines.find_index { |line| line.strip == '## Zusammenfassung' }
     if start_index
       end_index = nil
@@ -216,12 +221,12 @@ class HtmlGenerator
       return summary_lines.join("\n").strip.gsub(/^\s+|\s+$/, '')
     end
 
-    # 2) Neues Format: Fließtext nach erster Trennlinie (---) bis "Quellen:"/"Links:"/nächste Trennlinie
+    # 2) New format: free text after first separator (---) until "Sources:"/"Links:"/next separator
     first_sep_index = lines.find_index { |line| line.strip == '---' }
-    return "Zusammenfassung nicht verfügbar" unless first_sep_index
+    return "Summary not available" unless first_sep_index
 
-    # Suche nächste Marker
-    end_markers = [/^\s*Quellen:/i, /^\s*Links:/i, /^\s*---\s*$/]
+    # Find next markers
+    end_markers = [/^\s*Sources:/i, /^\s*Links:/i, /^\s*---\s*$/]
     end_index = nil
     (first_sep_index + 1...lines.length).each do |i|
       if end_markers.any? { |rx| lines[i] =~ rx }

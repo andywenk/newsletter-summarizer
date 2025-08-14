@@ -6,7 +6,7 @@ require 'dotenv'
 
 class FileManager
   def initialize
-    # Lade Umgebungsvariablen
+    # Load environment variables
     Dotenv.load
     @config = load_application_config
     ensure_summaries_directory
@@ -28,11 +28,11 @@ class FileManager
     date = email.date || Time.now
     date_str = date.strftime('%Y-%m-%d')
     
-    # Erstelle einen sicheren Dateinamen
+    # Build a safe filename
     safe_title = sanitize_filename(title)
     filename = "#{date_str}_#{safe_title}.md"
     
-    # Stelle sicher, dass der Dateiname eindeutig ist
+    # Ensure the filename is unique
     counter = 1
     original_filename = filename
     while File.exist?(File.join(@config['summaries_dir'], filename))
@@ -45,7 +45,7 @@ class FileManager
     content = generate_markdown_content(email, summary, title, date, matched_recipients)
     
     File.write(filepath, content, encoding: 'UTF-8')
-    puts "Zusammenfassung gespeichert: #{filepath}"
+    puts "Summary saved: #{filepath}"
     
     filename
   end
@@ -53,7 +53,7 @@ class FileManager
   private
 
   def sanitize_filename(filename)
-    # Entferne oder ersetze ungültige Zeichen
+    # Remove or replace invalid characters
     filename.gsub(/[^\w\s-]/, '')
            .gsub(/\s+/, '_')
            .gsub(/_{2,}/, '_')
@@ -68,16 +68,16 @@ class FileManager
     cc_addresses = Array(email.cc).map(&:to_s).join(', ')
     bcc_addresses = Array(email.bcc).map(&:to_s).join(', ')
     
-    recipients_line = matched_recipients && !matched_recipients.empty? ? "\n**Gefundene Empfänger:** #{matched_recipients.join(', ')}\n" : "\n"
+    recipients_line = matched_recipients && !matched_recipients.empty? ? "\n**Matched recipients:** #{matched_recipients.join(', ')}\n" : "\n"
 
     content = <<~MARKDOWN
       # #{title}
 
-      **Datum:** #{date_str}  
-      **Von:** #{email.from.join(', ')}  
-      **Betreff:** #{email.subject}  
+      **Date:** #{date_str}  
+      **From:** #{email.from.join(', ')}  
+      **Subject:** #{email.subject}  
       **Message-ID:** #{email.message_id}  
-      **An:** #{to_addresses}  
+      **To:** #{to_addresses}  
       **Cc:** #{cc_addresses}  
       **Bcc:** #{bcc_addresses}#{recipients_line}
 
@@ -86,8 +86,8 @@ class FileManager
       #{summary}
 
       
-      Quellen:
-      #{links.empty? ? "Keine Links gefunden." : links.map { |l| "- #{l}" }.join("\n")}
+      Sources:
+      #{links.empty? ? "No links found." : links.map { |l| "- #{l}" }.join("\n")}
     MARKDOWN
     
     content

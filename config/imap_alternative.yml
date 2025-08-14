@@ -1,7 +1,7 @@
-# Alternative IMAP-Konfigurationen für mx.qraex.de
-# Kopiere eine dieser Konfigurationen in config/imap.yml falls die Standard-Konfiguration nicht funktioniert
+# Alternative IMAP configurations for mx.qraex.de
+# Copy one of these configurations into config/imap.yml if the default configuration does not work
 
-# Option 1: Port 143 ohne SSL
+# Option 1: Port 143 without SSL
 default: &default
   host: mx.qraex.de
   port: 143
@@ -12,7 +12,7 @@ default: &default
   subject_filter: "The Briefing"
   max_emails: 10
 
-# Option 2: Port 993 mit STARTTLS
+# Option 2: Port 993 with SSL/TLS
 # default: &default
 #   host: mx.qraex.de
 #   port: 993
@@ -23,7 +23,7 @@ default: &default
 #   subject_filter: "The Briefing"
 #   max_emails: 10
 
-# Option 3: Port 587 (SMTP-Port, falls IMAP nicht verfügbar)
+# Option 3: Port 587 (SMTP port, if IMAP is not available)
 # default: &default
 #   host: mx.qraex.de
 #   port: 587

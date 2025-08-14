@@ -64,10 +64,10 @@ class TestSummarizer < Minitest::Test
 
   def test_summarize_email_uses_openai_response
     s = TestableSummarizer.new
-    s.instance_variable_set(:@client, FakeOpenAIClient.new('Zusammenfassung'))
-    email = build_email(text: 'Inhalt')
+    s.instance_variable_set(:@client, FakeOpenAIClient.new('Summary'))
+    email = build_email(text: 'Content')
     out = s.summarize_email(email)
-    assert_equal 'Zusammenfassung', out
+    assert_equal 'Summary', out
   end
 
   def test_handles_old_chat_interface_without_keyword_args
@@ -99,16 +99,16 @@ class TestSummarizer < Minitest::Test
 
   def test_generate_title_trims_quotes
     s = TestableSummarizer.new
-    s.instance_variable_set(:@client, FakeOpenAIClient.new('"Titel"'))
-    email = build_email(text: 'Inhalt', subject: 'Betreff')
+    s.instance_variable_set(:@client, FakeOpenAIClient.new('"Title"'))
+    email = build_email(text: 'Content', subject: 'Subject')
     title = s.generate_title(email, 'summary')
-    assert_equal 'Titel', title
+    assert_equal 'Title', title
   end
 
   def test_extracts_html_or_text_and_strips_tags
     s = TestableSummarizer.new
     s.instance_variable_set(:@client, FakeOpenAIClient.new('ok'))
-    email = build_email(html: '<p>Hallo <strong>Welt</strong></p>')
+    email = build_email(html: '<p>Hello <strong>World</strong></p>')
     # No direct accessor; ensure summarize_email does not raise and uses stripped content
     assert s.summarize_email(email)
   end

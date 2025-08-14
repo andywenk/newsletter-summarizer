@@ -16,7 +16,7 @@ class NewsletterSummarizer
   end
 
   def process_emails(unread_only: false, prune: false)
-    puts "Starte Email-Verarbeitung..."
+    puts "Starting email processing..."
     
     begin
       @imap_client.connect
@@ -27,14 +27,14 @@ class NewsletterSummarizer
                  @imap_client.fetch_emails_with_recipient
                end
       
-      puts "Gefundene Emails: #{emails.length}"
+      puts "Found emails: #{emails.length}"
       
       processed_count = 0
       emails.each do |email|
         normalized_mid = normalize_message_id(email.message_id) || generate_fallback_message_id(email)
         next if @database.email_processed?(normalized_mid)
         
-        puts "Verarbeite Email: #{email.subject}"
+        puts "Processing email: #{email.subject}"
         
         begin
           # Erstelle Zusammenfassung
@@ -68,23 +68,23 @@ class NewsletterSummarizer
           )
           
           processed_count += 1
-          puts "Email erfolgreich verarbeitet: #{title}"
+          puts "Email processed successfully: #{title}"
 
           if prune
             deleted = @imap_client.delete_message_by_message_id(normalized_mid) if @imap_client.respond_to?(:delete_message_by_message_id)
             if deleted && deleted > 0
-              puts "🧹 Email im Postfach gelöscht (#{deleted} Treffer)"
+              puts "🧹 Deleted email in mailbox (#{deleted} match(es))"
             else
-              puts "ℹ️ Keine passende Nachricht zum Löschen gefunden"
+              puts "ℹ️ No matching message found to delete"
             end
           end
           
         rescue => e
-          puts "Fehler bei der Verarbeitung der Email '#{email.subject}': #{e.message}"
+          puts "Error processing email '#{email.subject}': #{e.message}"
         end
       end
       
-      puts "Verarbeitung abgeschlossen. #{processed_count} Emails verarbeitet."
+      puts "Processing finished. #{processed_count} emails processed."
       
       # Generiere HTML-Seite und öffne sie im Browser
       if processed_count > 0
@@ -96,14 +96,14 @@ class NewsletterSummarizer
       end
       
     rescue => e
-      puts "Fehler bei der Email-Verarbeitung: #{e.message}"
-      puts "\n💡 **Hinweis:** Der IMAP-Server ist nicht erreichbar."
-      puts "   Mögliche Lösungen:"
-      puts "   1. VPN-Verbindung zum Server-Netzwerk herstellen"
-      puts "   2. Anwendung auf einem Computer im lokalen Netzwerk ausführen"
-      puts "   3. Port-Weiterleitung für IMAP (993) konfigurieren"
-      puts "   4. Server-Administrator kontaktieren"
-      puts "\n   Die Anwendung ist vollständig konfiguriert und bereit für den Einsatz!"
+      puts "Error during email processing: #{e.message}"
+      puts "\n💡 Hint: The IMAP server is not reachable."
+      puts "   Possible solutions:"
+      puts "   1. Connect to the server network via VPN"
+      puts "   2. Run the app on a computer in the local network"
+      puts "   3. Configure port forwarding for IMAP (993)"
+      puts "   4. Contact the server administrator"
+      puts "\n   The application is fully configured and ready to use!"
     ensure
       @imap_client.disconnect
     end
@@ -138,10 +138,10 @@ class NewsletterSummarizer
   end
 
   def generate_and_open_html
-    puts "\n📄 Generiere HTML-Seite..."
+    puts "\n📄 Generating HTML page..."
     html_file = @html_generator.generate_html_page
     @html_generator.open_in_firefox(html_file)
-    puts "✅ HTML-Seite in Firefox geöffnet"
+    puts "✅ Opened HTML page in Firefox"
   end
 
   def cleanup

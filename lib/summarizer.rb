@@ -20,13 +20,13 @@ class Summarizer
     content = extract_email_content(email)
     
     prompt = <<~PROMPT
-      Erstelle eine prägnante Zusammenfassung der folgenden Email in Deutsch.
-      Gib die Antwort als EINEN kompakten Fließtext-Absatz zurück, ohne Überschriften, Listen oder Markdown-Formatierung.
-      
-      Email-Inhalt:
+      Erstelle eine prägnante Zusammenfassung der folgenden E-Mail AUF DEUTSCH.
+      Gib die Antwort als EINEN kompakten Fließtext-Absatz zurück (reiner Text, keine Überschriften, Listen oder Markdown).
+
+      E-Mail-Inhalt:
       #{content}
-      
-      Zusammenfassung (ein Absatz, keine Formatierung):
+
+      Zusammenfassung (ein Absatz, reiner Text):
     PROMPT
 
     begin
@@ -35,22 +35,22 @@ class Summarizer
         max_tokens: @config['max_tokens'],
         temperature: @config['temperature']
       )
-      content || "Zusammenfassung konnte nicht erstellt werden."
+      content || "Summary could not be generated."
     rescue => e
       AppLogger.logger.error("Fehler bei der Zusammenfassung: #{e.message}")
-      "Zusammenfassung konnte nicht erstellt werden: #{e.message}"
+      "Summary could not be generated: #{e.message}"
     end
   end
 
   def generate_title(email, summary)
     prompt = <<~PROMPT
-      Erstelle einen aussagekräftigen, kurzen Titel (max. 60 Zeichen) für diese Email-Zusammenfassung in Deutsch.
-      Der Titel sollte die Hauptthemen oder wichtigsten Punkte widerspiegeln.
-      
-      Email-Betreff: #{email.subject}
-      Zusammenfassung: #{summary[0..200]}...
-      
-      Titel:
+      Create a clear, short title (max 60 characters) in English for this email summary.
+      The title should reflect the main topics or most important points.
+
+      Email subject: #{email.subject}
+      Summary: #{summary[0..200]}...
+
+      Title:
     PROMPT
 
     begin
@@ -60,10 +60,10 @@ class Summarizer
         temperature: 0.3
       )&.strip || email.subject
       
-      # Entferne Anführungszeichen und andere unerwünschte Zeichen
+      # Remove quotes and other unwanted characters
       title.gsub(/["'`]/, '').strip
     rescue => e
-      AppLogger.logger.error("Fehler bei der Titelgenerierung: #{e.message}")
+      AppLogger.logger.error("Error generating title: #{e.message}")
       email.subject
     end
   end

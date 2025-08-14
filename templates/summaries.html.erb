@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="de">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Newsletter Zusammenfassungen</title>
+    <title>Newsletter Summaries</title>
     <style>
         * {
             margin: 0;
@@ -164,22 +164,22 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>📧 Newsletter Zusammenfassungen</h1>
-            <p>Automatisch generierte Zusammenfassungen Ihrer "The Briefing" Emails</p>
+            <h1>📧 Newsletter Summaries</h1>
+            <p>Automatically generated summaries of your "The Briefing" emails</p>
         </div>
 
         <div class="stats">
-            <h3>📊 Übersicht</h3>
+            <h3>📊 Overview</h3>
             <% total_summaries = summaries.values.flatten.length %>
-            <p><strong><%= total_summaries %></strong> Zusammenfassungen verfügbar</p>
-            <p><strong><%= summaries.keys.length %></strong> verschiedene Tage</p>
-            <p>Letzte Aktualisierung: <%= Time.now.strftime('%d.%m.%Y um %H:%M Uhr') %></p>
+            <p><strong><%= total_summaries %></strong> summaries available</p>
+            <p><strong><%= summaries.keys.length %></strong> different days</p>
+            <p>Last updated: <%= Time.now.strftime('%d.%m.%Y at %H:%M') %></p>
         </div>
 
         <% if summaries.empty? %>
             <div class="no-summaries">
-                <h3>📭 Keine Zusammenfassungen verfügbar</h3>
-                <p>Führen Sie zuerst die Email-Verarbeitung aus:</p>
+                <h3>📭 No summaries available</h3>
+                <p>Please run the email processing first:</p>
                 <code>bundle exec ruby bin/summarize process</code>
             </div>
         <% else %>
@@ -187,14 +187,14 @@
                 <div class="date-group">
                     <div class="date-header">
                         📅 <%= format_date_key(date_key) %>
-                        <span class="date-key"><%= date_summaries.length %> Email<%= 's' if date_summaries.length != 1 %></span>
+                        <span class="date-key"><%= date_summaries.length %> email<%= 's' if date_summaries.length != 1 %></span>
                     </div>
                     
                     <% date_summaries.each do |summary| %>
                         <div class="summary-card">
                             <div class="card-header">
                                 <div class="card-title">
-                                    <%= summary[:title] %>
+                                    <%= summary[:subject] %>
                                 </div>
                                 <div class="card-meta">
                                     <div class="meta-item">
@@ -219,11 +219,11 @@
                                     </div>
                                     <div class="meta-item">
                                         <span class="meta-label">🆔 ID:</span>
-                                        <span><%= summary[:message_id]&.split('@')&.first || 'Unbekannt' %></span>
+                                        <span><%= summary[:message_id]&.split('@')&.first || 'Unknown' %></span>
                                     </div>
                                     <% if summary[:cc].to_s.strip != '' || summary[:to].to_s.strip != '' %>
                                     <div class="meta-item" style="grid-column: 1 / -1; opacity: 0.9;">
-                                        <span class="meta-label">🎯 Gefundene Empfänger:</span>
+                                        <span class="meta-label">🎯 Matched recipients:</span>
                                         <span>
                                             <% recipients = [] %>
                                             <% recipients += summary[:to].to_s.split(',').map(&:strip) if summary[:to] %>
@@ -247,13 +247,13 @@
         <% end %>
 
         <div class="footer">
-            <p>🤖 Automatisch erstellt mit Newsletter Summarizer</p>
-            <p>Generiert am <%= Time.now.strftime('%d.%m.%Y um %H:%M:%S Uhr') %></p>
+            <p>🤖 Automatically generated with Newsletter Summarizer</p>
+            <p>Generated at <%= Time.now.strftime('%d.%m.%Y at %H:%M:%S') %></p>
         </div>
     </div>
 
     <script>
-        // Einfache Animation beim Laden
+        // Simple animation on load
         document.addEventListener('DOMContentLoaded', function() {
             const cards = document.querySelectorAll('.summary-card');
             cards.forEach((card, index) => {

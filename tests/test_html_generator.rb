@@ -14,14 +14,14 @@ class TestHtmlGenerator < Minitest::Test
     md = <<~MD
       # A Title
 
-      **Datum:** #{date}  
-      **Von:** sender@example.com  
-      **Betreff:** Subject  
+      **Date:** #{date}  
+      **From:** sender@example.com  
+      **Subject:** Subject  
       **Message-ID:** <mid@x>
 
       ---
 
-      ## Zusammenfassung
+      ## Summary
 
       Some markdown content
 
@@ -47,6 +47,6 @@ class TestHtmlGenerator < Minitest::Test
     assert File.exist?(html_file)
     html = File.read(html_file)
     assert_includes html, 'A Title'
-    assert_includes html, 'Zusammenfassungen verfügbar'
+    assert_includes html, 'summaries available'
   end
 end
