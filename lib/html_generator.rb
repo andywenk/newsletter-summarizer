@@ -1,6 +1,7 @@
 require 'erb'
 require 'fileutils'
 require 'date'
+require 'digest'
 
 class HtmlGenerator
   def initialize
@@ -73,6 +74,31 @@ class HtmlGenerator
     
     # Sort groups by date (newest first)
     grouped.sort_by { |date_key, _| date_key }.reverse.to_h
+  end
+
+  # --- Recipient helpers (used by template) ---
+  def extract_emails_from(text)
+    return [] unless text && !text.to_s.strip.empty?
+    text.scan(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i).map(&:downcase)
+  end
+
+  def primary_recipient_for(summary)
+    to_emails = extract_emails_from(summary[:to].to_s)
+    cc_emails = extract_emails_from(summary[:cc].to_s)
+    bcc_emails = extract_emails_from(summary[:bcc].to_s)
+    (to_emails + cc_emails + bcc_emails).first || 'unbekannt'
+  end
+
+  def hue_for_email(email)
+    hex = Digest::MD5.hexdigest(email.to_s)
+    (hex[0..5].to_i(16) % 360)
+  end
+
+  def recipient_gradient_style(summary)
+    email = primary_recipient_for(summary)
+    h = hue_for_email(email)
+    h2 = (h + 25) % 360
+    "background: linear-gradient(135deg, hsl(#{h}, 68%, 55%) 0%, hsl(#{h2}, 68%, 45%) 100%);"
   end
 
   def extract_date_key(date_string)

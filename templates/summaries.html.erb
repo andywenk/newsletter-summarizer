@@ -69,7 +69,7 @@
             box-shadow: 0 4px 15px rgba(0,0,0,0.1);
         }
 
-        .summary-card {
+            .summary-card {
             background: white;
             border-radius: 15px;
             box-shadow: 0 10px 30px rgba(0,0,0,0.1);
@@ -83,11 +83,10 @@
             box-shadow: 0 20px 40px rgba(0,0,0,0.15);
         }
 
-        .card-header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 25px;
-        }
+            .card-header {
+                color: white;
+                padding: 25px;
+            }
 
         .card-title {
             font-size: 1.5rem;
@@ -190,9 +189,11 @@
                         <span class="date-key"><%= date_summaries.length %> email<%= 's' if date_summaries.length != 1 %></span>
                     </div>
                     
-                    <% date_summaries.each do |summary| %>
+                    <% # Sortiere nach Primär-Empfänger-E-Mail (To > Cc > Bcc)
+                       sorted = date_summaries.sort_by { |s| primary_recipient_for(s) }
+                       sorted.each do |summary| %>
                         <div class="summary-card">
-                            <div class="card-header">
+                            <div class="card-header" style="<%= recipient_gradient_style(summary) %>">
                                 <div class="card-title">
                                     <%= summary[:subject] %>
                                 </div>
@@ -204,6 +205,10 @@
                                     <div class="meta-item">
                                         <span class="meta-label">👤 Von:</span>
                                         <span><%= summary[:from] %></span>
+                                    </div>
+                                    <div class="meta-item">
+                                        <span class="meta-label">🎯 Primär-Empfänger:</span>
+                                        <span><%= primary_recipient_for(summary) %></span>
                                     </div>
                                     <div class="meta-item">
                                         <span class="meta-label">➡️ An:</span>
