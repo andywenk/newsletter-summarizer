@@ -8,10 +8,16 @@ A Ruby application that automatically reads emails from an IMAP mailbox, generat
 - 🤖 AI-powered summaries (OpenAI GPT)
 - 📝 Markdown export
 - 🗄️ SQLite database to prevent duplicates
-- 🌐 HTML report
-- 📅 Date grouping
-- ⏰ Timestamped HTML files
-- 🎯 Recipient filter
+- 🌐 HTML report (responsive)
+- 📅 Group by date with friendly labels (Today/Yesterday)
+- 🔎 Sort per day by primary recipient (To > Cc > Bcc)
+- 🎨 Deterministic color gradient per recipient for quick visual grouping
+- 🧱 Compact, left-aligned header with table-based metadata layout
+- 🔗 "Sources" section per summary: small, light-gray, numbered links with tooltips
+- 🗂️ Client-side archiving (no server): archive/restore per card, show/hide archived, archive/restore all per day
+- ♻️ Persistent archiving across regenerations using localStorage and a stable HTML file
+- ⏰ Timestamped HTML versions plus stable `summaries_latest.html`
+- 🎯 Recipient filter (server-side IMAP search)
 
 ## Installation
 
@@ -24,7 +30,7 @@ A Ruby application that automatically reads emails from an IMAP mailbox, generat
 
 ### Setup
 
-#### 1. Clone and install dependencies:
+#### 1. Clone and install dependencies
 
 ```bash
 git clone <repository-url>
@@ -32,13 +38,13 @@ cd newsletter-summarizer
 bundle install
 ```
 
-#### 2. Configure environment variables:
+#### 2. Configure environment variables
 
 ```bash
 cp env.example .env
 ```
 
-#### 3. Edit `.env`:
+#### 3. Edit `.env`
 
 ```bash
 IMAP_USERNAME=your_email@domain.com
@@ -137,8 +143,19 @@ The app:
 ### Output
 
 - Markdown: `summaries/YYYY-MM-DD_title_of_summary.md`
-- HTML report: `html/summaries_YYYYMMDD_HHMMSS.html`
+- HTML report (stable): `html/summaries_latest.html`
+- HTML report (archived versions): `html/summaries_YYYYMMDD_HHMMSS.html`
 - Database: `db/newsletter_summarizer.sqlite3`
+
+Notes on HTML report and archiving:
+
+- The CLI opens the stable `summaries_latest.html`. This ensures archiving state (stored in `localStorage`) remains intact across regenerations.
+- Each card has a stable `data-summary-id` (Message-ID or filename fallback). Archiving is persisted per ID.
+- Controls available in the HTML:
+  - Archive / Restore single card
+  - Show / Hide all archived cards (global toggle)
+  - Archive all / Restore all within a date group
+  - Bottom of each summary shows tiny, light-gray source links `[1] [2] ...` (hover to see full URL)
 
 ## Project structure
 
@@ -168,11 +185,40 @@ newsletter-summarizer/
 
 ## HTML report features
 
-- 📅 Group by date
-- 📊 Overview stats
-- 🎨 Modern responsive design
-- 📱 Mobile-friendly
-- ⏰ Timestamped filenames
+- 📊 Overview stats and last update timestamp
+- 📅 Group by date with labels (Today/Yesterday/Weekday)
+- 🔎 Sorted by primary recipient per day
+- 🎨 Recipient-based color gradients for cards
+- 🧱 Compact header with table layout; left-aligned metadata
+- 🔗 Sources rendered as numbered links with hover tooltips
+- 🗂️ Client-side archiving (persisted via `localStorage`)
+- ⏰ Stable file + timestamped versions, with quick links to recent versions
+
+### CLI help
+
+Run:
+
+```bash
+bundle exec ruby bin/summarize help
+```
+
+Expected output (excerpt)
+
+```bash
+Commands:
+  summarize process [--unread-only] [--prune] [--no_open]    # Process emails using the configured recipient filter
+  summarize html [--no_open]                                 # Generate an HTML page with all summaries and open it in the browser
+  summarize test                                             # Test the IMAP connection
+  summarize version                                          # Show application version
+  summarize reset [--force]                                  # Delete all records of processed emails (allows re-scanning)
+  summarize prune                                            # Delete emails in the mailbox that were already summarized
+
+Options:
+  --unread-only      Process only unread emails
+  --prune            Delete emails from the mailbox after summarizing
+  --no_open          Do not automatically open HTML in browser
+  --force            Delete without confirmation (for reset)
+```
 
 ## Troubleshooting
 
@@ -245,3 +291,40 @@ If you have issues or questions:
 1. Check the YAML configs
 2. Test the IMAP connection with `bundle exec ruby bin/summarize test`
 3. Review the logs for detailed error messages
+
+## Screenshots
+
+The following visuals help to understand the UI quickly. You can place the media files under `docs/` (recommended paths below). If the files are missing, GitHub will simply show broken previews until you add them.
+
+### UI overview
+
+![UI overview](docs/ui-overview.png)
+
+### Compact header with table-based metadata
+
+![Compact header](docs/header-compact.png)
+
+### Client-side archiving (persisted with localStorage)
+
+![Archiving](docs/archive.png)
+
+### Sources links at the bottom of each summary
+
+![Sources links](docs/sources-links.png)
+
+### CLI help (excerpt)
+
+![CLI help](docs/cli.png)
+
+### How to capture and update screenshots
+
+1. Generate the latest HTML: `bundle exec ruby bin/summarize html --no_open`
+2. Open `html/summaries_latest.html` in your browser and resize to a reasonable width.
+3. Take screenshots (PNG) and drop them into `docs/` using the filenames above.
+4. Optional: Create a short GIF (e.g., archiving feature) with a screen recorder or `ffmpeg`.
+
+Example to convert a short MP4 to GIF (macOS/Linux):
+
+```bash
+ffmpeg -i input.mp4 -vf "fps=12,scale=1280:-1:flags=lanczos" -loop 0 docs/archiving-demo.gif
+```
