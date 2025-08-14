@@ -1,6 +1,7 @@
 require 'erb'
 require 'fileutils'
 require 'date'
+require 'uri'
 require 'digest'
 
 class HtmlGenerator
@@ -151,6 +152,7 @@ class HtmlGenerator
     cc = extract_cc(lines)
     bcc = extract_bcc(lines)
     summary_text = extract_summary(lines)
+    sources = extract_sources(lines)
     
     {
       title: title,
@@ -162,6 +164,7 @@ class HtmlGenerator
       cc: cc,
       bcc: bcc,
       summary: summary_text,
+      sources: sources,
       filename: File.basename(file)
     }
   end
@@ -263,6 +266,20 @@ class HtmlGenerator
     end_index ||= lines.length
     summary_lines = lines[first_sep_index + 1...end_index]
     summary_lines.join("\n").strip
+  end
+
+  def extract_sources(lines)
+    # Find section starting with "Sources:" or "Links:" and collect URLs
+    index = lines.find_index { |line| line =~ /^\s*(Sources|Links):\s*$/i }
+    return [] unless index
+    url_regex = %r{https?://[^\s)\]\}>]+}
+    urls = []
+    (index + 1...lines.length).each do |i|
+      line = lines[i]
+      break if line.strip == '---'
+      urls.concat(line.scan(url_regex))
+    end
+    urls.uniq
   end
 
   def generate_html_content(summaries)

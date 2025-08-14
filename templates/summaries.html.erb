@@ -120,6 +120,15 @@
             color: #555;
         }
 
+        .sources {
+            color: #777; /* dezent grau */
+            font-size: 0.78rem;
+            opacity: 0.95;
+            margin-top: 6px;
+        }
+        .sources a { color: #1f6feb; text-decoration: underline; }
+        .sources a:hover { color: #0b5bd3; }
+
         .no-summaries {
             text-align: center;
             color: white;
@@ -237,6 +246,14 @@
                                 <div class="summary-text">
                                     <%= summary[:summary] %>
                                 </div>
+                                <% if summary[:sources] && !summary[:sources].empty? %>
+                                <div class="sources">
+                                    Quellen:
+                                    <% summary[:sources].each_with_index do |url, idx| %>
+                                        <a href="<%= url %>" target="_blank" rel="noopener" title="<%= url %>">[<%= idx+1 %>]</a>
+                                    <% end %>
+                                </div>
+                                <% end %>
                             </div>
                         </div>
                     <% end %>
