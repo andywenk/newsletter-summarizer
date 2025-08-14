@@ -69,7 +69,7 @@
             box-shadow: 0 4px 15px rgba(0,0,0,0.1);
         }
 
-            .summary-card {
+        .summary-card {
             background: white;
             border-radius: 15px;
             box-shadow: 0 10px 30px rgba(0,0,0,0.1);
@@ -85,22 +85,20 @@
 
             .card-header {
                 color: white;
-                padding: 25px;
+                padding: 12px;
             }
 
         .card-title {
-            font-size: 1.5rem;
-            margin-bottom: 10px;
+            font-size: 1.2rem;
+            margin-bottom: 4px;
             font-weight: 600;
         }
 
-        .card-meta {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 15px;
-            font-size: 0.9rem;
-            opacity: 0.9;
-        }
+        /* Tabellenlayout für kompakte Metadaten */
+        .meta-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+        .meta-table tr { vertical-align: top; }
+        .meta-table th { text-align: left; white-space: nowrap; padding: 2px 8px 2px 0; font-weight: 600; opacity: 0.9; }
+        .meta-table td { padding: 2px 12px 2px 0; }
 
         .meta-item {
             display: flex;
@@ -154,9 +152,8 @@
                 font-size: 2rem;
             }
             
-            .card-meta {
-                grid-template-columns: 1fr;
-            }
+            .meta-table, .meta-table tbody, .meta-table tr, .meta-table td, .meta-table th { display: block; width: 100%; }
+            .meta-table th { margin-top: 6px; }
         }
     </style>
 </head>
@@ -197,48 +194,44 @@
                                 <div class="card-title">
                                     <%= summary[:subject] %>
                                 </div>
-                                <div class="card-meta">
-                                    <div class="meta-item">
-                                        <span class="meta-label">📅 Datum:</span>
-                                        <span><%= summary[:date] %></span>
-                                    </div>
-                                    <div class="meta-item">
-                                        <span class="meta-label">👤 Von:</span>
-                                        <span><%= summary[:from] %></span>
-                                    </div>
-                                    <div class="meta-item">
-                                        <span class="meta-label">🎯 Primär-Empfänger:</span>
-                                        <span><%= primary_recipient_for(summary) %></span>
-                                    </div>
-                                    <div class="meta-item">
-                                        <span class="meta-label">➡️ An:</span>
-                                        <span><%= summary[:to].to_s %></span>
-                                    </div>
-                                    <div class="meta-item">
-                                        <span class="meta-label">📥 Cc:</span>
-                                        <span><%= summary[:cc].to_s %></span>
-                                    </div>
-                                    <div class="meta-item">
-                                        <span class="meta-label">📧 Betreff:</span>
-                                        <span><%= summary[:subject] %></span>
-                                    </div>
-                                    <div class="meta-item">
-                                        <span class="meta-label">🆔 ID:</span>
-                                        <span><%= summary[:message_id]&.split('@')&.first || 'Unknown' %></span>
-                                    </div>
-                                    <% if summary[:cc].to_s.strip != '' || summary[:to].to_s.strip != '' %>
-                                    <div class="meta-item" style="grid-column: 1 / -1; opacity: 0.9;">
-                                        <span class="meta-label">🎯 Matched recipients:</span>
-                                        <span>
-                                            <% recipients = [] %>
-                                            <% recipients += summary[:to].to_s.split(',').map(&:strip) if summary[:to] %>
-                                            <% recipients += summary[:cc].to_s.split(',').map(&:strip) if summary[:cc] %>
-                                            <% recipients = recipients.uniq.reject(&:empty?) %>
-                                            <%= recipients.join(', ') %>
-                                        </span>
-                                    </div>
-                                    <% end %>
-                                </div>
+                                <table class="meta-table">
+                                    <tbody>
+                                        <tr>
+                                            <th>Datum:</th>
+                                            <td><%= summary[:date] %></td>
+                                            <th>Von:</th>
+                                            <td><%= summary[:from] %></td>
+                                        </tr>
+                                        <tr>
+                                            <th>Primär-Empfänger:</th>
+                                            <td><%= primary_recipient_for(summary) %></td>
+                                            <th>An:</th>
+                                            <td><%= summary[:to].to_s %></td>
+                                        </tr>
+                                        <tr>
+                                            <th>Cc:</th>
+                                            <td><%= summary[:cc].to_s %></td>
+                                            <th>ID:</th>
+                                            <td><%= summary[:message_id]&.split('@')&.first || 'Unknown' %></td>
+                                        </tr>
+                                        <tr>
+                                            <th>Betreff:</th>
+                                            <td colspan="3"><%= summary[:subject] %></td>
+                                        </tr>
+                                        <% if summary[:cc].to_s.strip != '' || summary[:to].to_s.strip != '' %>
+                                        <tr>
+                                            <th>Matched recipients:</th>
+                                            <td colspan="3">
+                                                <% recipients = [] %>
+                                                <% recipients += summary[:to].to_s.split(',').map(&:strip) if summary[:to] %>
+                                                <% recipients += summary[:cc].to_s.split(',').map(&:strip) if summary[:cc] %>
+                                                <% recipients = recipients.uniq.reject(&:empty?) %>
+                                                <%= recipients.join(', ') %>
+                                            </td>
+                                        </tr>
+                                        <% end %>
+                                    </tbody>
+                                </table>
                             </div>
                             <div class="card-content">
                                 <div class="summary-text">
