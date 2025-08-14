@@ -29,8 +29,9 @@ class NewsletterSummarizerCLI < Thor
     begin
       html_generator = HtmlGenerator.new
       html_file = html_generator.generate_html_page
+      # Öffne immer die stabile Datei, damit localStorage/Archiv konsistent bleibt
       html_generator.open_in_firefox(html_file) unless options[:no_open]
-      puts "✅ Opened HTML page in Firefox"
+      puts "✅ Opened HTML page in Firefox (latest)"
     rescue => e
       puts "Error generating HTML page: #{e.message}"
     end

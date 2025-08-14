@@ -18,16 +18,25 @@ class HtmlGenerator
 
   def generate_html_page
     summaries = load_summaries
-    html_content = generate_html_content(summaries)
+    versions = Dir.glob(File.join(@html_dir, 'summaries_*.html'))
+                  .map { |p| File.basename(p) }
+                  .reject { |n| n == 'summaries_latest.html' }
+                  .sort
+                  .reverse
+                  .first(12)
+    html_content = generate_html_content(summaries, versions)
     
     # Create filename with timestamp
     timestamp = Time.now.strftime('%Y%m%d_%H%M%S')
-    html_file = File.join(@html_dir, "summaries_#{timestamp}.html")
+    timestamped_file = File.join(@html_dir, "summaries_#{timestamp}.html")
+    stable_file = File.join(@html_dir, 'summaries_latest.html')
     
-    File.write(html_file, html_content, encoding: 'UTF-8')
-    puts "HTML page created: #{html_file}"
+    # Write both: a stable file for persistent localStorage origin and a timestamped archive
+    File.write(stable_file, html_content, encoding: 'UTF-8')
+    File.write(timestamped_file, html_content, encoding: 'UTF-8')
+    puts "HTML page created: #{timestamped_file} and updated #{stable_file}"
     
-    html_file
+    stable_file
   end
 
   def open_in_firefox(html_file)
@@ -282,7 +291,7 @@ class HtmlGenerator
     urls.uniq
   end
 
-  def generate_html_content(summaries)
+  def generate_html_content(summaries, versions)
     template_content = File.read(@template_file, encoding: 'UTF-8')
     erb = ERB.new(template_content)
     erb.result(binding)

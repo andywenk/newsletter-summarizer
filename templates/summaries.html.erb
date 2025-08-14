@@ -52,6 +52,13 @@
             text-align: center;
         }
 
+        .versions {
+            margin-top: 10px;
+            font-size: 0.85rem;
+        }
+        .versions a { color: #e5e7eb; text-decoration: underline; }
+        .versions a:hover { color: #fff; }
+
         .date-group {
             margin-bottom: 40px;
         }
@@ -62,7 +69,6 @@
             border-radius: 10px;
             padding: 15px 20px;
             margin-bottom: 20px;
-            color: white;
             font-size: 1.3rem;
             font-weight: 600;
             text-align: center;
@@ -126,8 +132,8 @@
             opacity: 0.95;
             margin-top: 6px;
         }
-        .sources a { color: #1f6feb; text-decoration: underline; }
-        .sources a:hover { color: #0b5bd3; }
+        .sources a { color: #c9d1d9; text-decoration: underline; }
+        .sources a:hover { color: #e5e7eb; }
 
         .no-summaries {
             text-align: center;
@@ -144,6 +150,14 @@
             font-size: 0.9rem;
         }
 
+        /* Hellgrauer Hintergrund für den Bereich mit den Karten */
+        .content-area {
+            background: #f3f4f6;
+            border-radius: 16px;
+            padding: 16px;
+            margin-top: 16px;
+        }
+
         .date-key {
             background: rgba(255,255,255,0.2);
             padding: 5px 10px;
@@ -151,6 +165,16 @@
             font-size: 0.8rem;
             margin-left: 10px;
         }
+
+        /* Archiv-Funktionen */
+        .card-controls { display: flex; gap: 10px; justify-content: flex-end; margin-bottom: 6px; }
+        .card-controls a { color: #888; font-size: 0.8rem; text-decoration: underline; }
+        .summary-card.is-archived { display: none; }
+        .show-archived .summary-card.is-archived { display: block; opacity: 0.6; }
+        .archive-toggle { text-align: right; margin: 8px 0 16px; }
+        .archive-toggle a { color: #1f6feb; font-size: 0.85rem; text-decoration: underline; }
+        .group-controls { text-align: right; margin: -6px 0 10px; }
+        .group-controls a { color: #1f6feb; font-size: 0.85rem; text-decoration: underline; margin-left: 10px; }
 
         @media (max-width: 768px) {
             .container {
@@ -179,8 +203,17 @@
             <p><strong><%= total_summaries %></strong> summaries available</p>
             <p><strong><%= summaries.keys.length %></strong> different days</p>
             <p>Last updated: <%= Time.now.strftime('%d.%m.%Y at %H:%M') %></p>
+            <% if defined?(versions) && versions && versions.any? %>
+            <div class="versions">
+                Versionen: 
+                <% versions.each_with_index do |v, i| %>
+                    <a href="html/<%= v %>" target="_blank" rel="noopener">[<%= i+1 %>]</a>
+                <% end %>
+            </div>
+            <% end %>
         </div>
 
+        <div class="content-area">
         <% if summaries.empty? %>
             <div class="no-summaries">
                 <h3>📭 No summaries available</h3>
@@ -194,14 +227,22 @@
                         📅 <%= format_date_key(date_key) %>
                         <span class="date-key"><%= date_summaries.length %> email<%= 's' if date_summaries.length != 1 %></span>
                     </div>
+                    <div class="group-controls" data-date-key="<%= date_key %>">
+                        <a href="#" class="archive-all">Alle archivieren</a>
+                        <a href="#" class="restore-all">Alle wiederherstellen</a>
+                    </div>
                     
                     <% # Sortiere nach Primär-Empfänger-E-Mail (To > Cc > Bcc)
                        sorted = date_summaries.sort_by { |s| primary_recipient_for(s) }
                        sorted.each do |summary| %>
-                        <div class="summary-card">
+                        <div class="summary-card" data-summary-id="<%= (summary[:message_id] && !summary[:message_id].to_s.strip.empty?) ? summary[:message_id] : summary[:filename] %>">
                             <div class="card-header" style="<%= recipient_gradient_style(summary) %>">
                                 <div class="card-title">
                                     <%= summary[:subject] %>
+                                </div>
+                                <div class="card-controls">
+                                    <a href="#" class="archive-link">Archivieren</a>
+                                    <a href="#" class="restore-link" style="display:none">Wiederherstellen</a>
                                 </div>
                                 <table class="meta-table">
                                     <tbody>
@@ -260,30 +301,130 @@
                 </div>
             <% end %>
         <% end %>
+        </div>
 
         <div class="footer">
             <p>🤖 Automatically generated with Newsletter Summarizer</p>
             <p>Generated at <%= Time.now.strftime('%d.%m.%Y at %H:%M:%S') %></p>
         </div>
-    </div>
+        </div>
 
-    <script>
-        // Simple animation on load
-        document.addEventListener('DOMContentLoaded', function() {
-            const cards = document.querySelectorAll('.summary-card');
-            cards.forEach((card, index) => {
-                setTimeout(() => {
-                    card.style.opacity = '0';
-                    card.style.transform = 'translateY(20px)';
-                    card.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
-                    
+        <script>
+            // Simple animation on load
+            document.addEventListener('DOMContentLoaded', function() {
+                const cards = document.querySelectorAll('.summary-card');
+                cards.forEach((card, index) => {
                     setTimeout(() => {
-                        card.style.opacity = '1';
-                        card.style.transform = 'translateY(0)';
-                    }, 50);
-                }, index * 100);
+                        card.style.opacity = '0';
+                        card.style.transform = 'translateY(20px)';
+                        card.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+                        setTimeout(() => {
+                            card.style.opacity = '1';
+                            card.style.transform = 'translateY(0)';
+                        }, 50);
+                    }, index * 60);
+                });
+
+                // Client-side archivieren ohne Server: in localStorage merken
+                // Persistenz über HTML-Neuerstellungen sichern:
+                // Key hängt von der Datei-URL (ohne Timestamp) ab, damit mehrere Versionen denselben Speicher verwenden.
+                const stableOrigin = (location.pathname.replace(/\/summaries_\d{8}_\d{6}\.html$/, '/summaries_latest.html'));
+                const KEY = 'ns_archived_ids_' + stableOrigin;
+                const readSet = () => new Set(JSON.parse(localStorage.getItem(KEY) || '[]'));
+                const writeSet = (set) => localStorage.setItem(KEY, JSON.stringify(Array.from(set)));
+
+                let archived = readSet();
+
+                // Initialstatus anwenden
+                document.querySelectorAll('.summary-card').forEach(card => {
+                    const id = card.getAttribute('data-summary-id');
+                    if (archived.has(id)) card.classList.add('is-archived');
+                });
+
+                // Archivieren/Wiederherstellen-Links
+                document.querySelectorAll('.summary-card').forEach(card => {
+                    const id = card.getAttribute('data-summary-id');
+                    const archiveLink = card.querySelector('.archive-link');
+                    const restoreLink = card.querySelector('.restore-link');
+
+                    const syncLinks = () => {
+                        const isArchived = card.classList.contains('is-archived');
+                        archiveLink.style.display = isArchived ? 'none' : 'inline';
+                        restoreLink.style.display = isArchived ? 'inline' : 'none';
+                    };
+                    syncLinks();
+
+                    archiveLink.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        card.classList.add('is-archived');
+                        archived.add(id);
+                        writeSet(archived);
+                        syncLinks();
+                    });
+
+                    restoreLink.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        card.classList.remove('is-archived');
+                        archived.delete(id);
+                        writeSet(archived);
+                        syncLinks();
+                    });
+                });
+
+                // Globale Steuerung: Archivierte ein-/ausblenden
+                const toggleContainer = document.createElement('div');
+                toggleContainer.className = 'archive-toggle';
+                toggleContainer.innerHTML = '<a href="#" id="toggle-archived">Archivierte anzeigen</a>';
+                document.querySelector('.container').insertBefore(toggleContainer, document.querySelector('.date-group'));
+
+                const toggleLink = document.getElementById('toggle-archived');
+                let showArchived = false;
+                const updateToggle = () => { toggleLink.textContent = showArchived ? 'Archivierte verbergen' : 'Archivierte anzeigen'; };
+                updateToggle();
+
+                toggleLink.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    showArchived = !showArchived;
+                    document.body.classList.toggle('show-archived', showArchived);
+                    updateToggle();
+                });
+
+                // Gruppen-Steuerung: Alle archivieren/wiederherstellen pro Datum
+                document.querySelectorAll('.group-controls').forEach(gc => {
+                    const dateKey = gc.getAttribute('data-date-key');
+                    const archiveAll = gc.querySelector('.archive-all');
+                    const restoreAll = gc.querySelector('.restore-all');
+
+                    const cardsInGroup = () => {
+                        const groupEl = gc.parentElement;
+                        return Array.from(groupEl.querySelectorAll('.summary-card'));
+                    };
+
+                    archiveAll.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        cardsInGroup().forEach(card => {
+                            const id = card.getAttribute('data-summary-id');
+                            if (!archived.has(id)) {
+                                archived.add(id);
+                                card.classList.add('is-archived');
+                            }
+                        });
+                        writeSet(archived);
+                    });
+
+                    restoreAll.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        cardsInGroup().forEach(card => {
+                            const id = card.getAttribute('data-summary-id');
+                            if (archived.has(id)) {
+                                archived.delete(id);
+                                card.classList.remove('is-archived');
+                            }
+                        });
+                        writeSet(archived);
+                    });
+                });
             });
-        });
-    </script>
+        </script>
 </body>
 </html>
