@@ -66,7 +66,7 @@ default: &default
   username: <%= ENV['IMAP_USERNAME'] %>
   password: <%= ENV['IMAP_PASSWORD'] %>
   folder: INBOX
-  recipient_filter: <%= ENV['EMAIL_RECIPIENT_FILTER']>
+  recipient_filter: <%= ENV['IMAP_RECIPIENT_FILTER']>
   max_emails: 10
 ```
 
