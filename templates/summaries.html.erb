@@ -126,6 +126,11 @@
             color: #555;
         }
 
+        /* Text-to-Speech controls */
+        .tts-controls { display: flex; gap: 10px; align-items: center; margin: 6px 0 10px; }
+        .tts-controls a { color: #1f6feb; font-size: 0.85rem; text-decoration: underline; cursor: pointer; }
+        .tts-controls a[disabled] { opacity: 0.5; pointer-events: none; }
+
         .sources {
             color: #777; /* dezent grau */
             font-size: 0.78rem;
@@ -239,6 +244,12 @@
                             <div class="card-header" style="<%= recipient_gradient_style(summary) %>">
                                 <div class="card-title">
                                     <%= summary[:subject] %>
+                                </div>
+                                <div class="tts-controls">
+                                    <a href="#" class="tts-play">Read aloud</a>
+                                    <a href="#" class="tts-pause" style="display:none">Pause</a>
+                                    <a href="#" class="tts-resume" style="display:none">Resume</a>
+                                    <a href="#" class="tts-stop" style="display:none">Stop</a>
                                 </div>
                                 <div class="card-controls">
                                     <a href="#" class="archive-link">Archivieren</a>
@@ -424,6 +435,71 @@
                         writeSet(archived);
                     });
                 });
+
+                // Text-to-Speech pro Karte
+                const supportsTTS = 'speechSynthesis' in window;
+                if (supportsTTS) {
+                    document.querySelectorAll('.summary-card').forEach(card => {
+                        const play = card.querySelector('.tts-play');
+                        const pauseBtn = card.querySelector('.tts-pause');
+                        const resumeBtn = card.querySelector('.tts-resume');
+                        const stopBtn = card.querySelector('.tts-stop');
+
+                        if (!play) return;
+
+                        const summaryEl = card.querySelector('.summary-text');
+                        const subjectEl = card.querySelector('.card-title');
+
+                        let utterance = null;
+
+                        const setState = (state) => {
+                            play.style.display = (state === 'idle' || state === 'stopped') ? 'inline' : 'none';
+                            pauseBtn.style.display = (state === 'playing') ? 'inline' : 'none';
+                            resumeBtn.style.display = (state === 'paused') ? 'inline' : 'none';
+                            stopBtn.style.display = (state === 'playing' || state === 'paused') ? 'inline' : 'none';
+                        };
+
+                        setState('idle');
+
+                        play.addEventListener('click', (e) => {
+                            e.preventDefault();
+                            if (!summaryEl) return;
+                            window.speechSynthesis.cancel();
+                            const text = `${subjectEl?.textContent || ''}. ${summaryEl.textContent}`;
+                            utterance = new SpeechSynthesisUtterance(text);
+                            utterance.lang = (navigator.language || 'en-US');
+                            utterance.rate = 1.0;
+                            utterance.onend = () => setState('stopped');
+                            setState('playing');
+                            window.speechSynthesis.speak(utterance);
+                        });
+
+                        pauseBtn.addEventListener('click', (e) => {
+                            e.preventDefault();
+                            if (window.speechSynthesis.speaking && !window.speechSynthesis.paused) {
+                                window.speechSynthesis.pause();
+                                setState('paused');
+                            }
+                        });
+
+                        resumeBtn.addEventListener('click', (e) => {
+                            e.preventDefault();
+                            if (window.speechSynthesis.paused) {
+                                window.speechSynthesis.resume();
+                                setState('playing');
+                            }
+                        });
+
+                        stopBtn.addEventListener('click', (e) => {
+                            e.preventDefault();
+                            window.speechSynthesis.cancel();
+                            setState('stopped');
+                        });
+                    });
+                } else {
+                    // Hide TTS controls when unsupported
+                    document.querySelectorAll('.tts-controls').forEach(el => el.style.display = 'none');
+                }
             });
         </script>
 </body>
