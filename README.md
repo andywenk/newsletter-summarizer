@@ -66,7 +66,7 @@ default: &default
   username: <%= ENV['IMAP_USERNAME'] %>
   password: <%= ENV['IMAP_PASSWORD'] %>
   folder: INBOX
-  recipient_filter: "theinformation@andy-wenk.de"
+  recipient_filter: "<comma separated list of email addresses>"
   max_emails: 10
 ```
 
