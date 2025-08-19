@@ -5,7 +5,7 @@ default: &default
   username: <%= ENV['IMAP_USERNAME'] %>
   password: <%= ENV['IMAP_PASSWORD'] %>
   folder: INBOX
-  recipient_filter: "theinformation@andy-wenk.de, handelsblatt@andy-wenk.de, derstandard@andy-wenk.de"
+  recipient_filter: <%= ENV['IMAP_RECIPIENT_FILTER'] %>
   max_emails: 50
 
 development:
