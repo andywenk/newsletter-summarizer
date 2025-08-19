@@ -292,6 +292,11 @@ class HtmlGenerator
   end
 
   def generate_html_content(summaries, versions)
+    # Load ElevenLabs API key from environment (support both naming conventions)
+    require 'dotenv'
+    Dotenv.load
+    elevenlabs_api_key = ENV['ELEVENLABS_API_KEY'] || ''
+    
     template_content = File.read(@template_file, encoding: 'UTF-8')
     erb = ERB.new(template_content)
     erb.result(binding)

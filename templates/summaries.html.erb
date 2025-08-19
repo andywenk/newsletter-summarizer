@@ -130,6 +130,7 @@
         .tts-controls { display: flex; gap: 10px; align-items: center; margin: 6px 0 10px; }
         .tts-controls a { color: #1f6feb; font-size: 0.85rem; text-decoration: underline; cursor: pointer; }
         .tts-controls a[disabled] { opacity: 0.5; pointer-events: none; }
+        .tts-quality { margin-left: 10px; font-size: 0.75rem; color: #666; }
 
         .sources {
             color: #777; /* dezent grau */
@@ -246,10 +247,9 @@
                                     <%= summary[:subject] %>
                                 </div>
                                 <div class="tts-controls">
-                                    <a href="#" class="tts-play">Read aloud</a>
-                                    <a href="#" class="tts-pause" style="display:none">Pause</a>
-                                    <a href="#" class="tts-resume" style="display:none">Resume</a>
+                                    <a href="#" class="tts-hq">HQ Speech</a>
                                     <a href="#" class="tts-stop" style="display:none">Stop</a>
+                                    <span class="tts-quality">(ElevenLabs API)</span>
                                 </div>
                                 <div class="card-controls">
                                     <a href="#" class="archive-link">Archivieren</a>
@@ -318,7 +318,6 @@
             <p>🤖 Automatically generated with Newsletter Summarizer</p>
             <p>Generated at <%= Time.now.strftime('%d.%m.%Y at %H:%M:%S') %></p>
         </div>
-        </div>
 
         <script>
             // Simple animation on load
@@ -386,7 +385,17 @@
                 const toggleContainer = document.createElement('div');
                 toggleContainer.className = 'archive-toggle';
                 toggleContainer.innerHTML = '<a href="#" id="toggle-archived">Archivierte anzeigen</a>';
-                document.querySelector('.container').insertBefore(toggleContainer, document.querySelector('.date-group'));
+                
+                // Safe insertion: find first date-group or insert at end of container
+                const container = document.querySelector('.container');
+                const firstDateGroup = document.querySelector('.date-group');
+                
+                if (container && firstDateGroup && firstDateGroup.parentNode === container) {
+                    container.insertBefore(toggleContainer, firstDateGroup);
+                } else if (container) {
+                    // Fallback: insert at end of container
+                    container.appendChild(toggleContainer);
+                }
 
                 const toggleLink = document.getElementById('toggle-archived');
                 let showArchived = false;
@@ -436,70 +445,116 @@
                     });
                 });
 
-                // Text-to-Speech pro Karte
-                const supportsTTS = 'speechSynthesis' in window;
-                if (supportsTTS) {
-                    document.querySelectorAll('.summary-card').forEach(card => {
-                        const play = card.querySelector('.tts-play');
-                        const pauseBtn = card.querySelector('.tts-pause');
-                        const resumeBtn = card.querySelector('.tts-resume');
+                // High-Quality Text-to-Speech mit ElevenLabs API
+                document.querySelectorAll('.summary-card').forEach(card => {
+                    const hqBtn = card.querySelector('.tts-hq');
+                    const stopBtn = card.querySelector('.tts-stop');
+                    if (!hqBtn) return;
+
+                    const summaryEl = card.querySelector('.summary-text');
+                    const subjectEl = card.querySelector('.card-title');
+                    
+                    let currentAudio = null; // Store audio reference for stop functionality
+
+                    hqBtn.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        console.log('HQ Speech clicked');
+                        
+                        // Clean and truncate text for API (preserve German umlauts)
+                        let text = `${subjectEl?.textContent || ''}. ${summaryEl.textContent}`;
+                        // Keep German umlauts and common punctuation, remove only problematic chars
+                        text = text.replace(/[^\w\s.,!?äöüßÄÖÜ-]/g, '').trim();
+                        
+                        // Limit text length (ElevenLabs free tier: ~10k chars)
+                        if (text.length > 8000) {
+                            text = text.substring(0, 8000) + '... (truncated)';
+                        }
+                        
+                        console.log('Text to speak:', text.substring(0, 100) + '...');
+                        
+                        // ElevenLabs API integration
+                        const apiKey = '<%= elevenlabs_api_key %>'; // Loaded from ENV['ELEVENLABS_API_KEY']
+                        const voiceId = 'pNInz6obpgDQGcFmaJgB'; // Adam voice (German accent, free tier)
+                        
+                        if (!apiKey || apiKey.trim() === '') {
+                            alert('Please set your ElevenLabs API key in .env file to use HQ Speech.\n\nAdd: ELEVENLABS_API_KEY=your-api-key\n\nGet a free API key at: https://elevenlabs.io/');
+                            return;
+                        }
+                        
+                        // Show loading state and hide stop button
+                        hqBtn.textContent = 'Generating...';
+                        hqBtn.style.display = 'none';
                         const stopBtn = card.querySelector('.tts-stop');
-
-                        if (!play) return;
-
-                        const summaryEl = card.querySelector('.summary-text');
-                        const subjectEl = card.querySelector('.card-title');
-
-                        let utterance = null;
-
-                        const setState = (state) => {
-                            play.style.display = (state === 'idle' || state === 'stopped') ? 'inline' : 'none';
-                            pauseBtn.style.display = (state === 'playing') ? 'inline' : 'none';
-                            resumeBtn.style.display = (state === 'paused') ? 'inline' : 'none';
-                            stopBtn.style.display = (state === 'playing' || state === 'paused') ? 'inline' : 'none';
-                        };
-
-                        setState('idle');
-
-                        play.addEventListener('click', (e) => {
-                            e.preventDefault();
-                            if (!summaryEl) return;
-                            window.speechSynthesis.cancel();
-                            const text = `${subjectEl?.textContent || ''}. ${summaryEl.textContent}`;
-                            utterance = new SpeechSynthesisUtterance(text);
-                            utterance.lang = (navigator.language || 'en-US');
-                            utterance.rate = 1.0;
-                            utterance.onend = () => setState('stopped');
-                            setState('playing');
-                            window.speechSynthesis.speak(utterance);
-                        });
-
-                        pauseBtn.addEventListener('click', (e) => {
-                            e.preventDefault();
-                            if (window.speechSynthesis.speaking && !window.speechSynthesis.paused) {
-                                window.speechSynthesis.pause();
-                                setState('paused');
+                        stopBtn.style.display = 'inline';
+                        
+                        let currentAudio = null; // Store audio reference for stop functionality
+                        
+                        fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
+                            method: 'POST',
+                            headers: {
+                                'Accept': 'audio/mpeg',
+                                'Content-Type': 'application/json',
+                                'xi-api-key': apiKey
+                            },
+                            body: JSON.stringify({
+                                text: text,
+                                model_id: 'eleven_multilingual_v2', // Better for German
+                                voice_settings: {
+                                    stability: 0.7, // Higher stability for German
+                                    similarity_boost: 0.6
+                                }
+                            })
+                        })
+                        .then(response => {
+                            if (!response.ok) {
+                                throw new Error(`HTTP error! status: ${response.status}`);
                             }
-                        });
-
-                        resumeBtn.addEventListener('click', (e) => {
-                            e.preventDefault();
-                            if (window.speechSynthesis.paused) {
-                                window.speechSynthesis.resume();
-                                setState('playing');
-                            }
-                        });
-
-                        stopBtn.addEventListener('click', (e) => {
-                            e.preventDefault();
-                            window.speechSynthesis.cancel();
-                            setState('stopped');
+                            return response.arrayBuffer();
+                        })
+                        .then(audioBuffer => {
+                            // Create audio element and play
+                            currentAudio = new Audio();
+                            const blob = new Blob([audioBuffer], { type: 'audio/mpeg' });
+                            currentAudio.src = URL.createObjectURL(blob);
+                            
+                            currentAudio.onended = () => {
+                                hqBtn.textContent = 'HQ Speech';
+                                hqBtn.style.display = 'inline';
+                                stopBtn.style.display = 'none';
+                                currentAudio = null;
+                            };
+                            
+                            currentAudio.play().catch(error => {
+                                console.error('Audio playback failed:', error);
+                                hqBtn.textContent = 'HQ Speech';
+                                hqBtn.style.display = 'inline';
+                                stopBtn.style.display = 'none';
+                                currentAudio = null;
+                            });
+                        })
+                        .catch(error => {
+                            console.error('ElevenLabs API error:', error);
+                            alert(`HQ Speech failed: ${error.message}\n\nCheck your API key and internet connection.`);
+                            hqBtn.textContent = 'HQ Speech';
+                            hqBtn.style.display = 'inline';
+                            stopBtn.style.display = 'none';
+                            currentAudio = null;
                         });
                     });
-                } else {
-                    // Hide TTS controls when unsupported
-                    document.querySelectorAll('.tts-controls').forEach(el => el.style.display = 'none');
-                }
+                    
+                    // Stop button functionality
+                    stopBtn.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        if (currentAudio) {
+                            currentAudio.pause();
+                            currentAudio.currentTime = 0;
+                            currentAudio = null;
+                        }
+                        hqBtn.textContent = 'HQ Speech';
+                        hqBtn.style.display = 'inline';
+                        stopBtn.style.display = 'none';
+                    });
+                });
             });
         </script>
 </body>
